@@ -27,6 +27,7 @@ class SessionManager:
         self.tolerance_cents = DEFAULT_TOLERANCE_CENTS
         self.processing_status = "idle"
         self.file_refs: dict[str, str] = {}
+        self.role_file_ids: dict[str, str] = {}
         self.cached_comparison: object | None = None
 
     @staticmethod
@@ -56,7 +57,19 @@ class SessionManager:
         self.tolerance_cents = DEFAULT_TOLERANCE_CENTS
         self.processing_status = "idle"
         self.file_refs.clear()
+        self.role_file_ids.clear()
         self.cached_comparison = None
 
     def register_temp_file(self, file_id: str, path: Path) -> None:
         self.file_refs[file_id] = str(path)
+
+    def set_role_file(self, role: str, file_id: str, path: Path) -> None:
+        """Register an inspected upload, replacing any prior file for the same role."""
+        previous_id = self.role_file_ids.get(role)
+        if previous_id and previous_id in self.file_refs:
+            previous_path = Path(self.file_refs[previous_id])
+            if previous_path.exists():
+                previous_path.unlink(missing_ok=True)
+            del self.file_refs[previous_id]
+        self.role_file_ids[role] = file_id
+        self.register_temp_file(file_id, path)

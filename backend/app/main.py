@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from backend.app.api.routes_audio import router as audio_router
 from backend.app.api.routes_compare import router as compare_router
 from backend.app.api.routes_health import router as health_router
 from backend.app.core.errors import HcsaError, INVALID_TOLERANCE_MESSAGE
@@ -61,9 +62,9 @@ def create_app() -> FastAPI:
             )
         return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
-    api_router = compare_router
     application.include_router(health_router, prefix="/api/v1")
-    application.include_router(api_router, prefix="/api/v1")
+    application.include_router(audio_router, prefix="/api/v1")
+    application.include_router(compare_router, prefix="/api/v1")
 
     return application
 
