@@ -11,6 +11,7 @@ BACKEND_MODULES = [
     "backend.app.main",
     "backend.app.core.config",
     "backend.app.core.errors",
+    "backend.app.core.session",
     "backend.app.api.routes_health",
     "backend.app.api.routes_audio",
     "backend.app.api.routes_compare",
