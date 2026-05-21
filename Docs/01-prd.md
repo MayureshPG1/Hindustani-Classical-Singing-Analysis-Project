@@ -2,7 +2,7 @@
 
 ## 1. Product Summary
 
-The product is a local desktop application for Hindustani classical music learning. It allows a guru to upload a recorded audio file and a disciple to upload their own recorded version of the same musical phrase, exercise, bandish segment, raga phrase, taan, alap, or swara practice. The app compares both recordings and presents a graphical analysis that helps the disciple understand where their pitch contour matches, goes higher, or goes lower than the guru's reference performance.
+The product is a local desktop application for Hindustani classical music learning. It allows a guru to upload a recorded audio file and a disciple to upload their own recorded version of the same musical phrase, exercise, bandish segment, raga phrase, taan, alap, or swara practice. The app compares both recordings by extracting pitch (F0) from each file and presenting a graphical overlay of guru and disciple pitch contours over time (Hz vs seconds).
 
 The first version will be a single-page desktop app with three core actions:
 
@@ -16,12 +16,13 @@ The app should primarily use Python for the backend/audio-analysis logic and sho
 
 In Hindustani classical music training, disciples often learn by listening to a guru and attempting to reproduce phrases accurately. Feedback usually depends on live correction from the guru. When practicing alone, disciples do not have an easy way to see whether their pitch movement, note placement, and melodic shape match the guru's reference.
 
-The app solves this by comparing two recorded audio files and creating a visual overlay of the guru's voice and the disciple's voice. The disciple can see:
+The app solves this by comparing two recorded audio files and creating a visual overlay of the guru's and disciple's pitch contours. The disciple can see:
 
-- Where their pitch matches the guru.
-- Where they sing higher than the guru.
-- Where they sing lower than the guru.
-- How close the overall melodic contour is to the guru's version.
+- Both melodic shapes side by side on one graph.
+- Where pitch rises, falls, or is silent in each recording.
+- How their contour relates visually to the guru's reference (shape and timing at a glance).
+
+Automatic match/higher/lower scoring and Sa-relative normalization are deferred to later versions.
 
 ## 3. Target Users
 
@@ -62,6 +63,15 @@ The app solves this by comparing two recorded audio files and creating a visual 
 - No mobile app in the first version unless later prioritized.
 - No full transcription into notation as a required MVP feature.
 
+### Removed from minimal MVP (to be added later)
+
+See also §18 To Be Done Later. Not in scope for the current pitch-overlay MVP:
+
+- **Sa and swaras:** auto-detect Sa per file; cents-from-Sa; swara labels/symbols on graph; `GET /swara-map`.
+- **Alignment and matching:** matched-portion finder; DTW per segment; compare only matched regions; `aligned_frames` and concatenated `aligned_time` on the graph.
+- **Scoring:** tolerance control (0–25 cents); match/higher/lower/unknown classification; tolerance band and colored regions on graph; `overall_score` and deviation/match percentages; exclude non-similar portions from metrics.
+- **API/data:** `guru_sa_hz`, `disciple_sa_hz`, `matched_segments`, `excluded_*_ranges`, `ComparisonMetrics`; errors `sa_detection_failed`, `no_matching_pattern`, `invalid_tolerance`; `GET`/`PUT /settings/tolerance`.
+
 ## 6. Core User Flow
 
 1. User opens the desktop app.
@@ -69,13 +79,10 @@ The app solves this by comparing two recorded audio files and creating a visual 
 3. App validates the file and displays basic file information.
 4. User clicks "Upload Disciple Voice" and selects an audio file.
 5. App validates the file and displays basic file information.
-6. User reviews or edits the tolerance value. The default tolerance is 0 cents (range 0–25).
-7. User clicks "Compare".
-8. App processes both audio files locally.
-9. App normalizes guru and disciple pitch contours relative to their detected Sa values.
-10. App displays an overlay graph comparing guru pitch and disciple pitch.
-11. App highlights matching areas, higher-than-guru areas, and lower-than-guru areas based on the tolerance value.
-12. User can inspect the graph and summary metrics.
+6. User clicks "Compare".
+7. App processes both audio files locally and extracts pitch for each.
+8. App displays an overlay graph: guru and disciple F0 (Hz) vs wall-clock time.
+9. User inspects the dual pitch contours (optional lightweight file summary such as duration or voiced fraction).
 
 ## 7. MVP User Interface Requirements
 
@@ -85,26 +92,10 @@ The MVP is a single-page desktop UI.
 
 - Button: "Upload Guru Voice"
 - Button: "Upload Disciple Voice"
-- Editable numeric field: "Tolerance", default value 0 (range 0–25)
-- Button/control: decrease tolerance
-- Button/control: increase tolerance
 - Button: "Compare"
-- Button: "Clear" (resets session, deletes temp files, tolerance to 0)
+- Button: "Clear" (resets session, deletes temp files)
 
-### Tolerance Control
-
-The front page shall include an editable tolerance field named "Tolerance". The tolerance value represents the allowed pitch difference in cents for classifying guru and disciple pitch as matching.
-
-Requirements:
-
-- Default value: 0 cents.
-- Valid range: 0 to 25 cents.
-- User can type a numeric value directly.
-- User can increase or decrease the value using plus and minus buttons next to the field.
-- Plus and minus controls change the value by 5 cents per click.
-- The comparison graph and statistics shall use the current tolerance value.
-- Lower tolerance makes the comparison stricter.
-- Higher tolerance makes the comparison more forgiving.
+Tolerance controls are not part of MVP.
 
 ### Required Display Areas
 
@@ -124,24 +115,18 @@ Requirements:
   - Idle
   - Loading audio
   - Extracting pitch
-  - Aligning recordings
   - Generating graph
   - Complete
   - Error
 
 - Comparison graph:
-  - Guru pitch contour
-  - Disciple pitch contour
-  - Match zones
-  - Higher/lower deviation zones
-  - Timeline
+  - Guru pitch contour (Hz vs time)
+  - Disciple pitch contour (Hz vs time)
+  - Full timeline per recording
 
-- Summary panel:
-  - Overall match score (`total_matching_intervals * 100 / total_intervals`)
-  - Average pitch deviation
-  - Percentage of matched sections
-  - Percentage of higher-than-guru sections
-  - Percentage of lower-than-guru sections
+- Optional summary (not scored):
+  - File durations
+  - Voiced frame count or voiced fraction per file
 
 ### UI Principles
 
@@ -181,13 +166,12 @@ The app should detect and show clear errors for:
 - File duration too long.
 - No usable audio data.
 - No vocals detected.
-- No sufficiently similar pitch-contour pattern between guru and disciple recordings.
 
 Guru and disciple clips may have different durations as long as each file is 5 minutes or shorter. Different durations should not block comparison by themselves.
 
 ## 9. Audio Analysis Requirements
 
-The comparison should focus primarily on vocal pitch contour. Timing alignment may be used internally to align two pitch contours, but the MVP shall not provide detailed rhythm, taal, or timing feedback.
+The comparison focuses on vocal pitch contour extraction and dual overlay visualization. The MVP does not align phrases with DTW, classify match/higher/lower, or provide rhythm, taal, or timing feedback.
 
 ### 9.1 Preprocessing
 
@@ -228,142 +212,40 @@ Justification:
 - It keeps the MVP dependency set smaller than neural pitch trackers such as CREPE/torchcrepe.
 - `torchcrepe` can be evaluated later if `librosa.pyin` is not accurate enough for noisy vocal recordings, but it is not part of the MVP dependency set.
 
-### 9.3 Sa and Relative Pitch
+### 9.3 Pitch Representation (MVP)
 
-Hindustani classical music is based on relative pitch around the tonic, commonly Sa. The app shall compare pitch relative to Sa rather than using absolute frequency matching.
+MVP uses raw frequency in Hz for graph display:
 
-MVP behavior:
+- Each `PitchFrame` has `time_seconds` and optional `frequency_hz`.
+- Unvoiced or low-confidence frames keep timeline position but omit F0 from the plotted line.
+- Y-axis: Hz (linear). X-axis: seconds from the start of each recording.
 
-1. Auto-detect Sa for the guru recording.
-2. Auto-detect Sa for the disciple recording.
-3. Normalize both pitch contours relative to their own detected Sa.
-4. Compare the normalized relative pitch contours.
+Guru and disciple may sing in different keys; the overlay does not normalize to Sa in MVP. Users compare shape visually; cross-key normalization is later scope.
 
-Required behavior:
+### 9.4 Audio Analysis Library Plan
 
-- Guru and disciple may sing in different scales.
-- The MVP shall support different pitch scales by normalizing both recordings to Sa.
-- Absolute pitch matching is not part of the MVP comparison.
-- Manual Sa correction can be added later if auto-detection is not sufficient.
-
-Implementation library decision:
-
-- Use `librosa`, `numpy`, and `scipy` to implement Sa detection.
-- The MVP shall not depend on a specialized Hindustani music package for Sa detection.
-- Recommended approach: extract F0, remove low-confidence/unvoiced frames from the Sa estimation step only, build a weighted pitch-class or cents histogram, identify the strongest stable pitch region, and use that as detected Sa.
-- The original graph timeline must still preserve unvoiced and silent frames even if they are excluded from Sa estimation.
-
-### 9.4 Pitch Representation
-
-The app should convert raw frequency into a musically meaningful representation:
-
-- Frequency in Hz for internal analysis.
-- Cents relative to Sa for comparison.
-- Indian swara labels for graph display, using full labels such as Sa, Re, Ga, Ma and compact symbols where the graph needs shorter labels.
-
-Example:
-
-- If guru and disciple sing the same phrase in different absolute keys, comparison should still work because both recordings are normalized relative to their own Sa.
-- The graph should help the user compare melodic shape and swara-relative pitch accuracy, not absolute vocal register.
-
-### 9.4.1 Swara Label Mapping
-
-The MVP shall show komal and tivra swaras. The graph should use Indian swara labels, with the following mapping available to the frontend and backend:
-
-| Swara Label | Symbol |
-| --- | --- |
-| Sa | S |
-| Komal Re | r |
-| Shuddha Re | R |
-| Komal Ga | g |
-| Shuddha Ga | G |
-| Shuddha Ma | m |
-| Tivra Ma | M |
-| Pa | P |
-| Komal Dha | d |
-| Shuddha Dha | D |
-| Komal Ni | n |
-| Shuddha Ni | N |
-
-The graph should prefer readable labels like Sa, Re, Ga, and Ma where space allows. Compact symbols may be used for dense axis ticks, hover values, or data payloads, but they must follow the mapping above.
-
-### 9.5 Time Alignment
-
-The guru and disciple recordings may not have identical timing. The app may align the two pitch contours before calculating pitch differences, but the MVP should use this only to support pitch comparison.
-
-Recommended approach:
-
-- Find similar pitch-contour portions with sliding-window discovery (see `07-architecture.md`).
-- Run `librosa.sequence.dtw` only inside each matched segment.
-- Align similar melodic shapes even if the disciple sings slower or faster within a segment.
-- Find similar pitch-contour portions even when guru and disciple files have different durations.
-- Compare only matched similar portions.
-- Leave non-similar additional portions from either uploaded audio out of comparison and scoring.
-- Return a specific error if no sufficiently similar vocal pattern can be found.
-- Preserve the full original timeline and do not remove silence or endings.
-- Do not present detailed early/late rhythm feedback in the MVP.
-
-### 9.6 Difference Calculation
-
-For each aligned time frame, the app should calculate:
-
-- Guru pitch.
-- Disciple pitch.
-- Difference in cents.
-- Whether the disciple is higher, lower, or within acceptable range.
-
-Tolerance behavior:
-
-- Match: absolute pitch difference is less than or equal to the current tolerance value.
-- Higher: disciple pitch is more than the tolerance value above the guru pitch.
-- Lower: disciple pitch is more than the tolerance value below the guru pitch.
-- Default tolerance: 0 cents.
-- Tolerance range: 0 to 25 cents.
-- Tolerance step size: 5 cents.
-
-The tolerance value shall come from the front-page Tolerance field and shall be editable before each comparison.
-
-Implementation library decision:
-
-- Use `numpy` for cents-difference calculation, tolerance classification, percentages, and summary scores.
-- Keep scoring as custom app logic because match/higher/lower classification is specific to this product.
-
-### 9.7 Audio Analysis Library Plan
-
-The best overall Python library for the app's audio-analysis backend is `librosa`. It covers most of the MVP audio tasks: loading, mono conversion, resampling, F0 extraction, frequency conversion helpers, and DTW alignment. It does not cover the desktop UI or polished graph rendering, so the graph/UI layer shall use `PySide6` and `pyqtgraph`.
-
-There is no single Python package that covers the complete product: Hindustani Sa-relative comparison, custom swara mapping, local API boundary, desktop UI, and graph rendering. The MVP should therefore use `librosa` as the core DSP engine and implement the domain-specific Sa detection, swara mapping, tolerance classification, and scoring as custom backend logic.
+The MVP audio backend uses `librosa` for load, resample, and `librosa.pyin` F0 extraction. UI uses `PySide6` and `pyqtgraph`.
 
 | PRD Task | Final Library Choice | Justification |
 | --- | --- | --- |
-| Load audio | `librosa.load`, `soundfile`, `imageio-ffmpeg` | `librosa.load` loads files into NumPy arrays, can convert to mono, and can resample. `soundfile` is the primary audio backend. `imageio-ffmpeg` helps package FFmpeg decoding support for MP3 on Windows. |
-| Preserve silence and endings | Custom logic with `numpy` arrays | The product explicitly must not trim endings or silent/non-vocal sections, so the backend should avoid silence-trimming helpers and preserve the full timeline. |
-| Mono conversion | `librosa.load(..., mono=True)` or `librosa.to_mono` | Built-in support, simple, and consistent with the rest of the audio pipeline. |
-| Resampling | `librosa.load(..., sr=22050)` with `soxr` | Keeps analysis predictable across file formats and sample rates. `librosa` uses high-quality `soxr` resampling. |
-| Pitch/F0 extraction | `librosa.pyin` | Provides F0, voiced/unvoiced decisions, and voiced probability for monophonic vocal pitch tracking. |
-| Backup pitch extractor | Later-scope `torchcrepe` evaluation | CREPE-style neural pitch tracking may be more robust in some conditions, but it adds PyTorch size and packaging complexity. |
-| Sa detection | Custom algorithm using `librosa`, `numpy`, and `scipy` | No general-purpose library perfectly solves Hindustani Sa detection for this MVP. Sa detection should use extracted F0 and stable-pitch histogram logic. |
-| Swara mapping | Custom table | The app's `S r R g G m M P d D n N` mapping is domain-specific and should remain explicit app logic. |
-| Alignment | `librosa.sequence.dtw` | DTW is already available in `librosa` and fits guru/disciple pitch contour alignment. |
-| Difference and scoring | `numpy` | Cents difference, tolerance classification, percentages, and score calculation are straightforward vector operations. |
-| Graph display | `pyqtgraph` | Fast, native Qt plotting that works with `PySide6` and NumPy; better suited than Matplotlib for an interactive desktop overlay graph. |
+| Load audio | `librosa.load`, `soundfile`, `imageio-ffmpeg` | Reliable local decode for WAV/MP3 in packaged Windows app. |
+| Preserve silence and endings | Custom logic with `numpy` arrays | Full timeline preserved; no trimming helpers. |
+| Mono conversion | `librosa.load(..., mono=True)` | Consistent mono analysis path. |
+| Resampling | `librosa.load(..., sr=22050)` with `soxr` | Predictable analysis rate. |
+| Pitch/F0 extraction | `librosa.pyin` | F0, voiced flags, and voiced probability for vocals. |
+| Graph display | `pyqtgraph` | Native Qt plotting with `PySide6`. |
 
 Recommended audio-comparison pipeline:
 
 1. Decode input audio to PCM.
 2. Load full audio without trimming.
-3. Convert to mono.
-4. Resample to `22050 Hz`.
-5. Run `librosa.pyin` with a human vocal pitch range, initially `fmin=50 Hz` and `fmax=1000 Hz`.
-6. Keep the full timeline and represent unvoiced/silent frames as masked values or `NaN`.
-7. Auto-detect Sa separately for guru and disciple.
-8. Convert both F0 contours to cents relative to their own Sa.
-9. Map cents to swara labels using `S r R g G m M P d D n N`.
-10. Find similar portions; align each matched segment with DTW.
-11. Compute disciple-minus-guru cents difference.
-12. Classify each aligned frame using the selected tolerance.
-13. Return graph-ready JSON to the frontend.
-14. Render guru line, disciple line, tolerance band, and match/high/low regions in `pyqtgraph`.
+3. Convert to mono and resample to `22050 Hz`.
+4. Run `librosa.pyin` with `fmin=50 Hz` and `fmax=1000 Hz`.
+5. Build `PitchFrame` list per file (full timeline).
+6. Return both series in `ComparisonResult`.
+7. Frontend plots guru and disciple Hz vs `time_seconds`.
+
+Deferred: Sa detection, swara mapping, matched-portion finder, DTW, tolerance scoring.
 
 ## 10. Graphical Analysis Requirements
 
@@ -371,35 +253,25 @@ The graph is the primary output of the app.
 
 ### Required Graph Elements
 
-- X-axis: Concatenated alignment index across matched segments (`aligned_time` 0…N−1).
-- Y-axis: Indian swara labels, backed internally by cents relative to Sa.
-- Swara labels include komal and tivra swaras using the defined mapping.
+- X-axis: `time_seconds` (wall-clock from start of each recording).
+- Y-axis: frequency in Hz (linear).
 - Guru line: one clear color.
 - Disciple line: second clear color.
-- Match zones: neutral or green highlight.
-- Disciple higher than guru: highlighted above the guru contour.
-- Disciple lower than guru: highlighted below the guru contour.
-- Gaps or unvoiced areas: visible breaks or muted segments.
-- Tolerance band around the guru contour based on the current tolerance value.
-- Graph and statistics focus on matched similar portions only (no full-upload timeline on the graph).
-- Non-similar additional portions are left out of the comparison graph and metrics.
+- Gaps or unvoiced areas: visible breaks where F0 is not plotted.
+- Full pitch timeline for each uploaded file.
 
 ### Deferred Graph Elements (Later Scope)
 
+- Indian swara Y-axis labels.
+- Tolerance band and match/higher/lower highlights.
+- Matched-portions-only view and concatenated alignment index.
 - Hover tooltips.
 - Zoom and pan.
 
-### Summary Metrics
+### Optional Summary (Not Scored)
 
-The app should calculate and display:
-
-- Overall match score from 0 to 100: `total_matching_intervals * 100 / total_intervals` over comparable frames in matched regions.
-- Average absolute pitch deviation in cents.
-- Percentage of frames within match threshold.
-- Percentage of frames where disciple is higher.
-- Percentage of frames where disciple is lower.
-- Tolerance value used for the comparison.
-- Non-similar additional portions excluded from scoring.
+- Guru and disciple duration.
+- Voiced frame count or voiced fraction per file.
 
 ## 11. Desktop App Requirements
 
@@ -408,7 +280,7 @@ The app should calculate and display:
 The app should use a local API-based desktop architecture:
 
 - Python FastAPI backend for audio upload, validation, analysis, and comparison.
-- Python desktop frontend app for file selection, tolerance input, graph display, and statistics.
+- Python desktop frontend app for file selection, graph display, and optional lightweight summary.
 - Shared local repository for frontend and backend in the MVP.
 - Local file processing only.
 - API boundary designed so the backend can later serve other frontends, such as React or Kotlin.
@@ -424,7 +296,7 @@ Finalized MVP technology choices:
 7. `PySide6` for the Python desktop frontend.
 8. `pyqtgraph` for graph rendering.
 9. `librosa` as the core audio-analysis and music-information-retrieval library.
-10. `numpy` and `scipy` for numerical processing, Sa detection, scoring, and smoothing/filtering operations.
+10. `numpy` and `scipy` for numerical processing and optional smoothing/filtering operations.
 11. `soundfile` for audio file reading support used by `librosa`.
 12. `soxr` for high-quality resampling through `librosa`.
 13. `imageio-ffmpeg` to package FFmpeg support for MP3 decoding on Windows.
@@ -433,7 +305,7 @@ Finalized MVP technology choices:
 Recommended MVP choice:
 
 - Use `librosa` as the main DSP engine rather than mixing multiple pitch/audio-analysis libraries in MVP.
-- Use custom backend logic for Sa detection, swara mapping, tolerance classification, and scoring.
+- Keep MVP backend logic limited to load, validate, and pitch extraction; defer Sa, swara, alignment, and scoring.
 - Use `PySide6` plus `pyqtgraph` for the frontend and graph instead of Matplotlib or Plotly.
 - Use `PyInstaller` instead of Nuitka for the first packaging pass.
 - Keep `praat-parselmouth`, `pyworld`, `Essentia`, `CREPE`, and `torchcrepe` out of the MVP dependency set unless pitch accuracy testing proves `librosa.pyin` is insufficient.
@@ -527,8 +399,8 @@ The backend shall expose local API endpoints for the frontend to use. Exact rout
 - Health check.
 - Guru audio upload/selection metadata.
 - Disciple audio upload/selection metadata.
-- Compare request with guru file, disciple file, and tolerance value.
-- Compare response containing aligned graph data, swara-relative pitch values, classifications, and summary statistics.
+- Compare request with guru file and disciple file.
+- Compare response containing `guru_pitch_frames` and `disciple_pitch_frames` for graphing.
 - Error responses for invalid file, unsupported format, missing pitch, and analysis failure.
 
 ### Frontend App Requirements
@@ -584,59 +456,26 @@ The app shall compare the guru and disciple recordings when both files are avail
 Acceptance criteria:
 
 - Compare button is disabled until both files are loaded.
-- The current tolerance value is sent with the comparison request.
 - Guru and disciple files may have different durations if each file is 5 minutes or shorter.
 - Clicking Compare starts local analysis.
 - App shows progress during analysis.
 - App handles processing errors without crashing.
-- App displays graph and summary after successful comparison.
+- App displays dual pitch graph after successful comparison.
 
-### FR-4: Set Comparison Tolerance
-
-The app shall allow the user to set the pitch tolerance used for matching guru and disciple pitch contours.
-
-Acceptance criteria:
-
-- Tolerance field is visible on the single-page UI.
-- Default tolerance is 0 cents (range 0–25).
-- User can edit tolerance manually.
-- User can increase or decrease tolerance using plus and minus controls.
-- Plus and minus controls change tolerance by 5 cents per click.
-- Compare uses the currently displayed tolerance value.
-- The result displays the tolerance value used for analysis.
-
-### FR-5: Pitch Overlay Graph
+### FR-4: Pitch Overlay Graph
 
 The app shall show guru and disciple pitch contours on the same graph.
 
 Acceptance criteria:
 
 - Guru and disciple contours are visually distinct.
-- Graph uses Indian swara labels on the pitch axis.
-- Graph supports komal and tivra swara labels using the defined mapping.
-- Graph compares normalized pitch relative to each singer's detected Sa.
-- Graph compares only matched similar portions when files contain extra non-similar material.
-- Matching, higher, and lower areas are clearly indicated.
-- Matching, higher, and lower classifications use the current tolerance value.
+- Graph uses Hz on the Y-axis and seconds on the X-axis.
+- Full pitch timeline for each recording is shown.
 - Unvoiced or low-confidence sections do not create misleading lines.
-- Leading silence, trailing silence, long endings, and non-vocal silent sections remain visible in the graph timeline.
+- Leading silence, trailing silence, long endings, and non-vocal silent sections remain represented in pitch data.
 - Graph remains readable for short and medium-length recordings.
 
-### FR-6: Summary Analysis
-
-The app shall show simple numerical analysis after comparison.
-
-Acceptance criteria:
-
-- Overall match score is visible.
-- Average deviation is visible.
-- Higher/lower/matching percentages are visible.
-- Tolerance used for comparison is visible.
-- Metrics exclude non-similar additional portions left out of comparison.
-- Scores are explained using plain labels, not technical jargon only.
-- The MVP does not generate coaching advice or qualitative practice feedback.
-
-### FR-7: Local Desktop Execution
+### FR-5: Local Desktop Execution
 
 The app shall run as a local desktop application.
 
@@ -647,32 +486,29 @@ Acceptance criteria:
 - Core comparison works offline.
 - App can be packaged as a desktop executable.
 
-### FR-8: Local Backend API
+### FR-6: Local Backend API
 
 The app shall keep core analysis behind a local FastAPI API.
 
 Acceptance criteria:
 
 - Desktop frontend calls the local backend API for comparison.
-- API receives guru file, disciple file, and tolerance value.
-- API returns graph-ready pitch data and summary statistics.
+- API receives guru file and disciple file.
+- API returns `guru_pitch_frames` and `disciple_pitch_frames`.
 - API design can support a future React, Kotlin, or other frontend.
 
-### FR-9: Handle Different Durations and Extra Material
+### FR-7: Handle Different Durations
 
-The app shall compare recordings of different durations when they contain similar pitch-contour portions.
+The app shall accept recordings of different durations.
 
 Acceptance criteria:
 
 - Each uploaded file may be up to 5 minutes long.
 - The two files do not need to have the same duration.
-- Backend processes both full files.
-- Backend finds similar portions between guru and disciple recordings.
-- Backend compares only matched similar portions.
-- Non-similar additional portions from either file are left out of comparison and scoring.
-- If no sufficiently similar pattern is found, the backend returns a specific error.
+- Backend processes both full files and returns full pitch timelines.
+- No phrase matching or alignment is required in MVP.
 
-### FR-10: Specific Error Handling and Reset
+### FR-8: Specific Error Handling and Reset
 
 The app shall handle invalid analysis scenarios with specific errors.
 
@@ -680,8 +516,6 @@ Acceptance criteria:
 
 - No audio data returns a specific error.
 - No vocals or no reliable vocal pitch returns a specific error.
-- Sa detection failure returns a specific error.
-- No matching pattern returns a specific error.
 - Errors are displayed as popups.
 - After an error popup is dismissed, the UI resets to the starting state and the user starts again.
 
@@ -727,8 +561,8 @@ The MVP should live in a single repository and run as one local desktop app. Ins
 
 Recommended high-level structure:
 
-- `backend/`: FastAPI API, audio loading, pitch extraction, Sa detection, comparison, and scoring.
-- `frontend/`: Python desktop UI, file picker, tolerance control, graph display, and summary statistics.
+- `backend/`: FastAPI API, audio loading, pitch extraction, compare service.
+- `frontend/`: Python desktop UI, file picker, graph display, optional lightweight summary.
 - `shared/`: shared schemas or constants if needed.
 - `tests/`: backend unit tests and sample-analysis tests.
 - `packaging/`: PyInstaller configuration.
@@ -747,52 +581,34 @@ Recommended high-level structure:
    - Preserves full audio duration, including silence and long endings.
    - Performs basic validation.
 
-3. Sa Detection Module
-   - Auto-detects Sa for guru recording using `librosa`, `numpy`, and `scipy`.
-   - Auto-detects Sa for disciple recording using the same algorithm.
-   - Reports detection confidence where possible.
-
-4. Pitch Analysis Module
+3. Pitch Extractor Module
    - Extracts F0/pitch contour using `librosa.pyin`.
    - Filters low-confidence pitch values without deleting timeline regions.
-   - Converts pitch to cents relative to each recording's detected Sa.
-   - Maps relative pitch regions to Indian swara labels for graph display.
+   - Returns `PitchFrame` lists for guru and disciple.
 
-5. Alignment Module
-   - Aligns guru and disciple contours using `librosa.sequence.dtw` inside each matched segment only.
-   - Finds similar pitch-contour portions across different-duration recordings.
-   - Leaves non-similar additional portions out of comparison and scoring.
-   - Supports pitch comparison when performances are slower or faster.
-   - Does not remove silence or endings from the source timeline.
-
-6. Scoring Module
-   - Uses the user-selected tolerance value.
-   - Calculates deviation metrics using `numpy`.
-   - Calculates match, higher, and lower percentages.
-   - Calculates overall score.
+4. Compare Service Module
+   - Loads both files, runs pitch extraction, packages `ComparisonResult`.
+   - Enforces minimum voiced content (`no_vocals_detected`).
 
 ### Frontend Modules
 
 1. Single-Page Desktop UI Module
    - Handles file selection.
    - Shows selected file details.
-   - Shows tolerance input with plus and minus controls.
    - Shows comparison status.
 
 2. API Client Module
    - Calls the local FastAPI backend using `httpx`.
-   - Sends guru file, disciple file, and tolerance value.
+   - Sends guru file and disciple file.
    - Receives comparison result data.
 
 3. Graph Module
-   - Creates overlay graph from backend response using `pyqtgraph`.
-   - Displays Indian swara labels.
-   - Adds match/higher/lower visual regions.
-   - Displays silent and unvoiced regions without hiding them.
+   - Creates dual-contour graph from backend response using `pyqtgraph`.
+   - Plots Hz vs `time_seconds` for each series.
+   - Displays silent and unvoiced regions as gaps.
 
-4. Summary Module
-   - Displays statistical analysis.
-   - Shows overall score, average deviation, match percentage, higher percentage, lower percentage, and tolerance used.
+4. Summary Module (optional)
+   - Displays durations and optional voiced fractions.
 
 ## 15. Suggested Data Model
 
@@ -806,49 +622,21 @@ Recommended high-level structure:
 - format
 - validation_status
 
-### ToleranceSettings
-
-- tolerance_cents
-- default_tolerance_cents: 0
-- minimum_tolerance_cents: 0
-- maximum_tolerance_cents: 25
-- step_cents: 5
-
 ### PitchFrame
 
 - time_seconds
 - frequency_hz
 - confidence
-- cents_from_sa
-- swara_label
 - voiced
 - silent_or_unvoiced
-
-### ComparisonFrame
-
-- aligned_time
-- original_guru_time
-- original_disciple_time
-- guru_cents_from_sa
-- disciple_cents_from_sa
-- guru_swara_label
-- disciple_swara_label
-- difference_cents
-- classification: match, higher, lower, unknown
 
 ### ComparisonResult
 
 - guru_file_info
 - disciple_file_info
-- guru_sa_hz
-- disciple_sa_hz
-- tolerance_cents
-- aligned_frames
-- average_deviation_cents
-- match_percentage
-- higher_percentage
-- lower_percentage
-- overall_score
+- guru_pitch_frames
+- disciple_pitch_frames
+- warnings (optional)
 
 ## 16. MVP Acceptance Criteria
 
@@ -856,21 +644,12 @@ The MVP is complete when:
 
 - A user can open a local desktop app.
 - The app shows one page with guru upload, disciple upload, compare, and graph area.
-- The page includes a Tolerance field with default value 0 and plus/minus controls that change the value by 5 cents (range 0–25).
 - The user can upload two valid audio files.
 - The app extracts pitch from both files.
-- The app auto-detects Sa for both files.
-- The app compares pitch relative to each recording's detected Sa.
-- The app aligns the pitch contours if needed for comparison.
-- The app handles different-duration clips by finding similar portions.
-- The app excludes non-similar additional portions from comparison and scoring.
-- The app shows a visual overlay comparing guru and disciple pitch.
-- The graph uses Indian swara labels.
-- The graph shows komal and tivra swaras using the defined swara mapping.
-- The app clearly shows higher, lower, and matching sections.
-- The app preserves leading silence, trailing silence, long endings, and non-vocal silent sections in the analysis timeline.
-- The app shows basic summary metrics.
-- The app provides statistical analysis only, without coaching feedback.
+- The app shows a visual overlay comparing guru and disciple pitch (Hz vs time).
+- The app preserves leading silence, trailing silence, long endings, and non-vocal silent sections in pitch data.
+- The app provides graph visualization only (no match/higher/lower scoring in MVP).
+- The app does not require Sa detection, swara labels, or phrase alignment for MVP completion.
 - The Python desktop frontend calls a local FastAPI backend.
 - The app runs locally without cloud processing.
 - The app can be packaged into a desktop executable.
@@ -888,24 +667,14 @@ Mitigation:
 - Use confidence thresholds.
 - Consider more robust pitch extraction libraries if needed.
 
-### Sa Detection
+### Different Keys and Timing
 
-Accurate comparison in Hindustani music depends on identifying the correct Sa for both guru and disciple recordings.
-
-Mitigation:
-
-- Auto-detect Sa separately for guru and disciple recordings.
-- Normalize both pitch contours relative to detected Sa before comparison.
-- Add manual Sa selection later if auto-detection is not reliable enough.
-
-### Timing Differences
-
-Guru and disciple may sing at different speeds, making direct pitch contour comparison misleading.
+Guru and disciple may sing in different keys or at different speeds. MVP shows raw Hz overlays without normalization or DTW.
 
 Mitigation:
 
-- Use dynamic time warping or a similar alignment approach only to support pitch comparison.
-- Do not show detailed rhythm, taal, or early/late timing analysis in the MVP.
+- Document that visual comparison is shape-at-a-glance, not scored accuracy.
+- Add Sa normalization and alignment in later versions if needed.
 - Keep silence and long endings visible rather than trimming them.
 
 ### Musical Nuance
@@ -929,9 +698,20 @@ Mitigation:
 
 ## 18. To Be Done Later
 
+### Restored Hindustani comparison features (removed from minimal MVP)
+
+- Sa detection and cents-relative normalization across different keys (`guru_sa_hz`, `disciple_sa_hz`; error `sa_detection_failed`).
+- Indian swara Y-axis labels and swara mapping (`S r R g G m M P d D n N`; `GET /swara-map`; per-frame `swara_label` / `swara_symbol`).
+- Tolerance control (default 0, range 0–25, step 5) and `GET`/`PUT /settings/tolerance`; `tolerance_cents` on compare.
+- Match/higher/lower/unknown frame classification using tolerance.
+- Matched-portion discovery (sliding windows) and DTW alignment per `MatchedSegment`.
+- Compare and graph **matched portions only**; `excluded_guru_ranges` / `excluded_disciple_ranges`; error `no_matching_pattern`.
+- Concatenated `aligned_time` X-axis; `ComparisonFrame` and `aligned_frames` in API.
+- Summary metrics: `overall_score` (`total_matching_intervals * 100 / total_intervals`), average deviation in cents, match/higher/lower/unknown percentages.
+- Graph tolerance band and match/higher/lower region highlights.
+- Highest deviation points in summary.
 - Manual Sa selection.
 - Manual correction of auto-detected Sa.
-- Absolute pitch comparison mode.
 - Detailed rhythm, laya, taal, or early/late timing analysis.
 - Raga-specific expected swara mapping.
 - Playback of guru and disciple audio.
@@ -953,55 +733,35 @@ Mitigation:
 
 ## 19. Resolved Product Decisions
 
-1. MVP compares pitch primarily.
-2. Guru and disciple may sing in different pitch scales.
-3. The app normalizes both recordings relative to detected Sa before comparison.
-4. Sa is auto-detected first.
-5. Exercise type does not affect MVP analysis because the app is doing frequency and pitch-contour analysis.
-6. Maximum recording length for MVP is 5 minutes per file.
-7. Windows is the first target operating system.
-8. Graph uses Indian swara labels.
-9. MVP uses file upload only.
-10. MVP does not include real-time recording or real-time playback.
-11. MVP does not include audio playback of uploaded files.
-12. MVP UI language is English.
-13. MVP provides graph comparison and statistical analysis only, not coaching feedback.
-14. Export is later scope.
-15. Backend and frontend live in the same repository for MVP.
-16. Backend is a Python FastAPI API so future React or Kotlin frontends can reuse it.
-17. Tolerance default is 0 cents; range 0–25; plus/minus step size is 5 cents.
-18. Swara labels use full Indian names such as Sa, Re, Ga, and Ma.
-19. MVP includes komal and tivra swara labels using the defined symbol mapping.
-20. MVP uses Python `3.11.x`.
-21. MVP uses `librosa` as the main audio-analysis/DSP library.
-22. MVP uses `librosa.pyin` for pitch extraction.
-23. MVP uses `librosa.sequence.dtw` for optional pitch-contour alignment.
-24. MVP uses `PySide6` for the desktop frontend.
-25. MVP uses `pyqtgraph` for graph rendering.
-26. MVP uses `PyInstaller` for Windows packaging.
-27. MVP does not include `praat-parselmouth`, `pyworld`, `Essentia`, `CREPE`, or `torchcrepe` as default dependencies.
+1. MVP extracts and overlays pitch contours (Hz vs time).
+2. Guru and disciple may have different durations; both full timelines are returned.
+3. Sa detection, swara mapping, DTW, and tolerance scoring are deferred.
+4. Exercise type does not change MVP analysis (F0 extraction only).
+5. Maximum recording length for MVP is 5 minutes per file.
+6. Windows is the first target operating system.
+7. Graph Y-axis is Hz (linear); X-axis is wall-clock seconds.
+8. MVP uses file upload only.
+9. MVP does not include real-time recording, playback, or coaching text.
+10. MVP UI language is English.
+11. Backend and frontend live in the same repository for MVP.
+12. Backend is a Python FastAPI API so future frontends can reuse it.
+13. MVP uses Python `3.11.x`, `librosa`, `librosa.pyin`, `PySide6`, `pyqtgraph`, `PyInstaller`.
+14. WAV and MP3 only; static backend port 8765; Clear required; client-side pre-validation; `no_vocals_detected` only.
+15. pyin thresholds are defined in `07-architecture.md`.
 
 ## 20. Resolved Clarifications (MVP)
 
-1. Tolerance range is 0–25 cents; default 0; step 5.
-2. Overall score is `total_matching_intervals * 100 / total_intervals`.
-3. Highest deviation points are out of scope.
-4. Matched-portion and pyin thresholds are defined in `07-architecture.md`.
-5. Graph shows matched portions only with concatenated X-axis.
-6. WAV and MP3 only; static backend port 8765; Clear required; client-side pre-validation; `no_vocals_detected` only.
+1. No tolerance UI or compare parameter in MVP.
+2. No overall match score or match/higher/lower percentages in MVP.
+3. Graph shows full-timeline dual F0 contours, not matched-only segments.
+4. Highest deviation points, swara bins, and Sa histogram are out of scope.
 
 ## 21. Current Assumptions
 
-- The MVP is for vocal Hindustani classical music.
+- The MVP is for vocal Hindustani classical music practice (visual pitch overlay).
 - The first version is a local Windows desktop application.
-- Python `3.11.x` is the primary backend, frontend, and analysis runtime for MVP.
-- The backend is a local FastAPI API.
-- The frontend is a Python desktop app built with `PySide6`.
-- The app will process uploaded files, not live microphone input, in the first version.
-- The first useful analysis will be relative pitch contour comparison.
-- The core audio-analysis engine is `librosa`.
-- The graphing engine is `pyqtgraph`.
-- The packaging tool is `PyInstaller`.
-- Graphical output and statistical analysis are more important than textual coaching in the first version.
-- The app should work offline.
-- The user wants a simple single-page UI.
+- Python `3.11.x` is the primary runtime.
+- The backend is a local FastAPI API; the frontend is `PySide6` + `pyqtgraph`.
+- The app processes uploaded files only in the first version.
+- The core audio-analysis engine is `librosa`; graphing is `pyqtgraph`.
+- The app works offline with a simple single-page UI.

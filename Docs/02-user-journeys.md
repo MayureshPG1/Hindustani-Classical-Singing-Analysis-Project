@@ -4,11 +4,11 @@
 
 ### Disciple
 
-A Hindustani classical music student practicing outside class. They have a guru reference recording and their own attempt. They want to see where their pitch contour matches, goes higher, or goes lower than the guru.
+A Hindustani classical music student practicing outside class. They have a guru reference recording and their own attempt. They want to see both pitch contours overlaid so they can visually compare melodic shape.
 
 ### Guru
 
-A teacher who may provide reference recordings to students. The guru may use the tool during or after lessons to help students visually understand pitch differences.
+A teacher who may provide reference recordings to students. The guru may use the tool during or after lessons to help students see pitch movement side by side.
 
 ## Journey 1: Compare Two Clean Recordings
 
@@ -30,83 +30,54 @@ Flow:
 5. User clicks `Upload Disciple Voice`.
 6. User selects the disciple audio file.
 7. App displays disciple file name, duration, format, and validation status.
-8. User leaves `Tolerance` at default `0` cents or edits it (range 0–25, step 5).
-9. User clicks `Compare`.
-10. App sends both files and tolerance to the local FastAPI backend.
-11. Backend extracts pitch contours, detects Sa for both recordings, normalizes contours, finds similar portions, aligns them if needed, and computes comparison data.
-12. Frontend renders guru and disciple pitch contours on the same graph.
-13. App highlights matching, higher, and lower regions.
-14. App displays statistical summary.
+8. User clicks `Compare`.
+9. App sends both files to the local FastAPI backend.
+10. Backend extracts pitch contours for each recording.
+11. Frontend renders guru and disciple F0 lines on the same graph (Hz vs time).
 
 Success outcome:
 
-- User sees a graph with guru and disciple pitch contours.
-- User sees match, higher, and lower sections.
-- User sees overall score, average deviation, match percentage, higher percentage, lower percentage, and tolerance used.
+- User sees two distinct pitch contour lines for guru and disciple.
+- User can visually compare shape, register, and timing at a glance.
 
-Algorithm expectation:
+Note:
 
-- Guru and disciple may or may not sing in different base Sa.
-- This is not a separate user action or workflow.
-- The backend must auto-detect Sa independently and normalize comparison regardless of whether both recordings use the same or different base Sa.
+- Guru and disciple may sing in different keys; Hz overlay does not normalize scale.
+- Clips with different durations share one time axis from 0; lines end when each recording ends.
 
 ## Journey 2: Clips Have Different Durations
 
-Goal: User compares two recordings where one clip contains extra material before or after the matching phrase.
+Goal: User compares two recordings of different length.
 
 Flow:
 
 1. User uploads guru and disciple files.
-2. Each file is 5 minutes or shorter, but the durations are different.
-3. One recording may contain extra silence, setup time, repeated notes, or an additional phrase not present in the other recording.
-4. User clicks `Compare`.
-5. Backend processes both full files.
-6. Backend finds similar pitch-contour portions between guru and disciple.
-7. Backend compares only the matched similar portions.
-8. Backend leaves out non-similar additional portions from comparison and scoring.
-9. Frontend displays graph and statistics for the matched comparison region.
+2. Each file is 5 minutes or shorter, but durations differ.
+3. User clicks `Compare`.
+4. Backend processes both full files and returns full pitch timelines.
+5. Frontend plots both contours on wall-clock time (each line spans its own duration).
 
 Success outcome:
 
-- Different clip durations do not block comparison.
-- Extra non-similar material from either uploaded audio is not scored.
-- User sees comparison for the best matched similar portions.
+- Different durations do not block comparison.
+- User sees both full pitch traces without automatic phrase alignment.
 
-## Journey 3: User Adjusts Tolerance
-
-Goal: User wants stricter or more forgiving comparison.
-
-Flow:
-
-1. User uploads both files.
-2. User changes `Tolerance` using plus/minus controls or direct input.
-3. Plus/minus controls change tolerance by 5 cents per click (clamped to 0–25).
-4. User clicks `Compare`.
-5. Backend classifies frames using the selected tolerance.
-
-Success outcome:
-
-- Lower tolerance produces fewer matching sections.
-- Higher tolerance produces more matching sections.
-- Result displays the tolerance used.
-
-## Journey 4: Recording Contains Silence or Long Ending
+## Journey 3: Recording Contains Silence or Long Ending
 
 Goal: User compares files that include pauses, silence, or long phrase endings.
 
-Flow differences:
+Flow:
 
-1. Backend loads full audio.
-2. Backend does not trim leading silence, trailing silence, long endings, or non-vocal silent sections.
-3. Backend marks silent or unvoiced regions in analysis data.
-4. Graph shows gaps or muted regions rather than hiding them.
+1. Backend loads full audio without trimming.
+2. Backend marks silent or unvoiced regions in pitch data.
+3. Graph shows gaps or breaks where F0 is not plotted.
 
 Success outcome:
 
 - Timeline still represents the full uploaded recording.
 - Silent regions do not create misleading pitch lines.
 
-## Journey 5: Invalid File
+## Journey 4: Invalid File
 
 Goal: User accidentally uploads an unsupported or unreadable file.
 
@@ -114,7 +85,7 @@ Flow:
 
 1. User clicks upload.
 2. User selects invalid file.
-3. App attempts validation through the backend or local file metadata checks.
+3. App validates through client checks and/or backend inspect.
 4. App displays a clear error popup.
 5. After the user dismisses the popup, the UI resets to the starting state.
 
@@ -130,14 +101,14 @@ Recovery:
 - User starts again by uploading files.
 - App does not crash.
 
-## Journey 6: Backend Processing Error
+## Journey 5: Backend Processing Error
 
 Goal: App handles unexpected analysis failure.
 
 Flow:
 
 1. User uploads both files and clicks `Compare`.
-2. Backend fails during decoding, pitch extraction, Sa detection, or alignment.
+2. Backend fails during decoding or pitch extraction.
 3. API returns a structured error.
 4. Frontend displays a useful error popup.
 5. After the user dismisses the popup, the UI resets to the starting state.
@@ -146,3 +117,14 @@ Success outcome:
 
 - App remains usable.
 - User starts again by uploading files and running comparison.
+
+## Out of scope for MVP (journeys to be added later)
+
+These workflows existed in the prior spec and are **not** part of the minimal pitch-overlay MVP:
+
+- **Adjust tolerance:** change 0–25 cents before compare; stricter/forgiving match classification.
+- **Different keys via Sa:** backend normalizes both recordings to detected Sa; user does not pick Sa manually.
+- **Different durations with phrase match:** backend finds similar portions, compares only those, excludes extra material from graph and score.
+- **No matching pattern:** compare fails with `no_matching_pattern` when recordings share no similar contour.
+- **Sa detection failure:** compare fails with `sa_detection_failed`.
+- **Scored outcome:** user sees overall score, match/higher/lower percentages, and tolerance used after compare.

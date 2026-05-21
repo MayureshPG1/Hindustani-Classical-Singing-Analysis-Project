@@ -11,15 +11,12 @@ PySide6 Desktop App
   v
 FastAPI Backend on 127.0.0.1:8765
   |
-  | calls local analysis modules
+  | audio_loader + pitch_extractor
   v
-Audio Analysis Pipeline
+ComparisonResult JSON (dual pitch series)
   |
   v
-Comparison Result JSON
-  |
-  v
-PyQtGraph Visualization
+PyQtGraph Visualization (Hz vs time)
 ```
 
 ## Runtime Components
@@ -32,10 +29,9 @@ Responsibilities:
 - Provide single-page UI.
 - Select files.
 - Run client-side file validation before API calls.
-- Validate basic UI state.
-- Send files and tolerance to backend.
-- Render graph with `pyqtgraph`.
-- Show summary metrics and errors.
+- Send both files to compare endpoint.
+- Render dual F0 contours with `pyqtgraph`.
+- Show optional lightweight summary and errors.
 
 Libraries:
 
@@ -49,14 +45,9 @@ Responsibilities:
 
 - Expose local FastAPI endpoints.
 - Decode and validate audio.
-- Run pitch extraction.
-- Detect Sa.
-- Normalize pitch contours.
-- Find similar pitch-contour portions across recordings.
-- Align matched contours if needed.
-- Exclude non-similar additional portions from comparison and scoring.
-- Classify frames.
-- Return graph-ready data.
+- Run pitch extraction with `librosa.pyin`.
+- Return pitch frame arrays for guru and disciple.
+- Enforce minimum voiced content (`no_vocals_detected`).
 
 Libraries:
 
@@ -85,19 +76,14 @@ backend/
       audio.py
       comparison.py
       errors.py
-      swara.py
     services/
       audio_loader.py
       pitch_extractor.py
-      sa_detector.py
-      swara_mapper.py
-      matched_portion_finder.py
-      aligner.py
-      scorer.py
-      comparator.py
+      compare_service.py
     core/
       config.py
       errors.py
+      session.py
 
 frontend/
   app.py
@@ -107,13 +93,10 @@ frontend/
   validation.py
   widgets/
     upload_panel.py
-    tolerance_control.py
     comparison_graph.py
-    summary_panel.py
     status_bar.py
 
 shared/
-  constants.py
 
 tests/
   backend/
@@ -126,41 +109,19 @@ packaging/
 requirements.txt
 ```
 
+Legacy modules (`sa_detector`, `swara_mapper`, `matched_portion_finder`, `aligner`, `scorer`, `comparator`, `swara` model) may exist in the repo during transition; they are not part of the minimal MVP architecture and should be removed when code is updated.
+
 ## Backend Analysis Pipeline
 
-1. Receive files and tolerance.
+1. Receive guru and disciple files.
 2. Decode audio.
 3. Validate duration and readability.
 4. Load full waveform with `librosa.load(..., mono=True, sr=22050)`.
 5. Preserve full waveform. Do not trim silence.
-6. Extract F0 with `librosa.pyin`.
+6. Extract F0 with `librosa.pyin` for each file.
 7. Preserve frame timeline and mark unvoiced frames.
-8. Detect Sa separately for guru and disciple.
-9. Convert F0 to cents relative to detected Sa.
-10. Map cents to swara labels.
-11. Find similar portions with `matched_portion_finder` (sliding windows; see below).
-12. Leave non-similar additional portions out of comparison and scoring.
-13. Align each `MatchedSegment` with `librosa.sequence.dtw` only (not full files).
-14. Build `aligned_frames` with cumulative `aligned_time` across concatenated matched segments.
-15. Calculate difference in cents.
-16. Classify frames using tolerance (0–25 cents).
-17. Calculate summary metrics (`overall_score = total_matching_intervals * 100 / total_intervals`).
-18. Return `ComparisonResult` with graph-ready matched-only arrays.
-
-## Sa Detection Strategy
-
-Initial MVP algorithm:
-
-1. Use reliable voiced F0 frames only for Sa estimation.
-2. Convert F0 to log-frequency or cents.
-3. Fold pitch values into a 1200-cent octave representation.
-4. Build a weighted histogram using pitch confidence and stability.
-5. Select the dominant stable pitch region as Sa.
-6. Return Sa in Hz and optional confidence.
-
-Important rule:
-
-- Excluding unvoiced frames from Sa estimation must not remove them from the internal timeline; the comparison graph displays matched portions only.
+8. Optionally compute per-file voiced counts for summary.
+9. Return `ComparisonResult` with `guru_pitch_frames` and `disciple_pitch_frames`.
 
 ### pyin and vocal thresholds (`config.py`)
 
@@ -169,57 +130,30 @@ Important rule:
 | `SR` | 22050 | Analysis sample rate |
 | `HOP_LENGTH` | 220 | ~10 ms frames |
 | `FMIN_HZ` / `FMAX_HZ` | 50 / 1000 | `librosa.pyin` range |
-| `VOICED_PROB_PLOT_MIN` | 0.55 | Reliable pitch for compare/plot |
+| `VOICED_PROB_PLOT_MIN` | 0.55 | Reliable pitch for plotting |
 | `VOICED_PROB_SILENT_MAX` | 0.35 | Treat as silent/unvoiced |
-| `VOICED_PROB_SA_MIN` | 0.65 | Sa estimation only |
-| `SA_MIN_VOICED_FRAMES` | 50 | Minimum voiced frames for Sa |
-| `SA_HISTOGRAM_MIN_PEAK_WEIGHT` | 0.15 | Below → `sa_detection_failed` |
 | `MIN_VOICED_FRAMES_TOTAL` | 30 | Below → `no_vocals_detected` |
 | `MIN_VOICED_FRACTION` | 0.05 | Below → `no_vocals_detected` |
 
 Use `no_vocals_detected` only (do not expose `no_pitch_detected`).
 
-## Matched-Portion Discovery
-
-Module: `matched_portion_finder.py` (runs before per-segment DTW).
-
-**Sliding windows:** `min_window_seconds` 1.0, `window_step_seconds` 0.25, `min_voiced_ratio_in_window` 0.40, `min_voiced_frames` 30.
-
-**Coarse match:** Resample voiced `cents_from_sa` in each guru/disciple window pair to length L=50; accept when Pearson `r >= 0.70` and MACE `<= 80` cents, or normalized DTW cost `<= 1.2`.
-
-**Merge:** Adjacent guru windows with gap `< 0.5 s` when disciple mappings overlap.
-
-**`no_matching_pattern` when:** no candidate passes; matched guru voiced duration `< 20%` of guru voiced total; or longest match `< 0.8 s` voiced.
-
-**DTW:** `librosa.sequence.dtw` on raw voiced cents inside each `MatchedSegment` only.
+Sa-specific constants (`VOICED_PROB_SA_MIN`, `SA_*`) are not used in minimal MVP.
 
 ## Graph Rendering Strategy
 
-The backend returns graph-ready arrays. The frontend does not run audio analysis.
+The backend returns pitch arrays. The frontend does not run audio analysis.
 
-Graph data:
+Graph data per series:
 
-- Guru aligned cents.
-- Disciple aligned cents.
-- `aligned_time` (0…N−1 across concatenated matched segments).
-- Guru/disciple original times per frame (debug).
-- Matched segments.
-- Excluded guru ranges.
-- Excluded disciple ranges.
-- Classification per frame.
-- Swara labels.
-- Sa F0 and mapped swara F0 debug values.
-- Tolerance band values.
+- X: `time_seconds`
+- Y: `frequency_hz` (plot only when voiced and above confidence threshold; gaps elsewhere)
 
 Frontend renders:
 
 - Guru contour line.
 - Disciple contour line.
-- Tolerance band.
-- Match/higher/lower regions.
-- Silent/unvoiced gaps.
-- Matched comparison portions only.
-- Summary metrics.
+- Legend distinguishing guru vs disciple.
+- No tolerance band, classification colors, or swara axis labels in MVP.
 
 ## Backend Process Management
 
@@ -228,14 +162,9 @@ Recommended MVP:
 - Desktop app starts backend as a subprocess on launch.
 - Backend binds to `127.0.0.1:8765` (static port).
 - Frontend polls `http://127.0.0.1:8765/api/v1/health`.
-- Frontend uses the backend tolerance endpoints to get/set tolerance (default 0, range 0–25, step 5).
 - Frontend calls the clear-session endpoint when the user clicks Clear; deletes temp files on Clear, error dismiss, and exit.
 - Session temp root: e.g. `%TEMP%/hcsa-session/{uuid}/`.
 - Frontend shuts down backend process when app exits.
-
-Alternative for later:
-
-- Run FastAPI in an embedded thread if subprocess packaging becomes too complex.
 
 ## Packaging
 
@@ -260,11 +189,26 @@ Packaging requirements:
 - Uploaded files are processed locally (WAV and MP3 only).
 - Temporary files are deleted on session clear, UI reset after errors, and app exit.
 
-## Later Architecture Extension
+## Out of scope for MVP (architecture to be added later)
+
+Modules and pipeline steps removed from minimal MVP (may exist in repo until code cleanup):
+
+| Module / step | Role when added |
+| --- | --- |
+| `sa_detector.py` | Histogram-based Sa per recording |
+| `swara_mapper.py` | Cents → swara label/symbol |
+| `matched_portion_finder.py` | Sliding-window similar portions |
+| `aligner.py` | DTW per `MatchedSegment` |
+| `scorer.py` | Tolerance classification and metrics |
+| `comparator.py` | Orchestrate full Hindustani pipeline |
+| `models/swara.py` | Swara map API model |
+
+Pipeline steps to re-insert after pitch extraction: detect Sa → cents-from-Sa → swara map → find portions → DTW → classify → metrics.
+
+Graph (later): cents/swara Y-axis, matched-only X-axis, tolerance band, classification colors.
 
 Because backend logic is behind FastAPI, future clients can call the same API:
 
 - React frontend.
 - Kotlin frontend.
 - Separate web UI.
-- Remote API deployment, if privacy requirements change later.

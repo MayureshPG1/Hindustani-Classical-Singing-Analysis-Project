@@ -6,7 +6,7 @@ Hindustani Classical Music Learning App
 
 ## Purpose
 
-This project is a local Windows desktop app for comparing a guru's vocal recording with a disciple's vocal recording. The app analyzes relative pitch contours, normalizes each recording to its detected Sa, and displays a single-page graphical comparison with statistical metrics.
+This project is a local Windows desktop app for comparing a guru's vocal recording with a disciple's vocal recording. The app extracts fundamental frequency (F0) from each file with `librosa.pyin` and displays both pitch contours on one graph over wall-clock time.
 
 ## Spec Workflow
 
@@ -24,7 +24,7 @@ This repository follows a spec-driven workflow:
 10. `09-implementation-plan.md`: build sequence.
 11. `10-cursor-build-brief.md`: Cursor implementation brief.
 
-Product defaults and analysis thresholds are also summarized in `07-architecture.md` (matched-portion discovery, pyin cutoffs, port 8765).
+Product defaults and pyin thresholds are summarized in `07-architecture.md` (port **8765**, vocal cutoffs).
 
 ## Locked MVP Decisions
 
@@ -35,12 +35,44 @@ Product defaults and analysis thresholds are also summarized in `07-architecture
 - Backend: local `FastAPI` API served through `uvicorn`.
 - Audio analysis: `librosa` as the main DSP engine.
 - Pitch extraction: `librosa.pyin`.
-- Alignment: `librosa.sequence.dtw`.
 - Numeric processing: `numpy`, `scipy`.
 - Audio file reading: `soundfile`, with packaged FFmpeg support through `imageio-ffmpeg`.
 - Packaging: `PyInstaller`.
-- Scope: upload two files, compare pitch contours, show graph and statistics.
-- Out of scope: live recording, real-time feedback, audio playback, export, detailed rhythm/taal analysis, coaching text.
+- Scope: upload two files, extract pitch, overlay both contours on one graph (Hz vs wall-clock time).
+
+## Out of scope for MVP (to be added later)
+
+The following were in the original Hindustani-comparison design and are **not** in the minimal MVP. Re-add only when explicitly requested.
+
+### Pitch normalization and swaras
+
+- Auto-detect Sa per recording (`guru_sa_hz`, `disciple_sa_hz`).
+- Cents-relative pitch (`cents_from_sa`) for cross-key comparison.
+- Indian swara mapping and symbols (`S r R g G m M P d D n N`, 100-cent bins).
+- Swara Y-axis labels on the graph (komal/tivra).
+- `GET /swara-map` and `Swara` data model.
+
+### Alignment, matching, and scoring
+
+- Matched-portion discovery (sliding windows, similarity thresholds).
+- DTW alignment inside matched segments (`librosa.sequence.dtw`).
+- Compare/score **matched portions only**; exclude non-similar extra material.
+- Concatenated `aligned_time` X-axis (alignment index, not wall-clock).
+- Per-frame difference in cents and tolerance-based classification (`match`, `higher`, `lower`, `unknown`).
+- Tolerance UI (0–25 cents, step 5) and `GET`/`PUT /settings/tolerance`.
+- `tolerance_cents` on compare request.
+- Summary metrics: `overall_score`, average deviation, match/higher/lower/unknown percentages.
+- `ComparisonFrame`, `ComparisonMetrics`, `MatchedSegment`, `ExcludedRange` in API responses.
+- Errors: `sa_detection_failed`, `no_matching_pattern`, `invalid_tolerance`.
+- Graph: tolerance band, match/higher/lower highlights, matched-only view.
+- Highest deviation points metric.
+
+### Other product features (unchanged non-goals)
+
+- Live recording, real-time feedback, audio playback, export.
+- Detailed rhythm, taal, laya, or early/late timing analysis.
+- Coaching text or qualitative practice advice.
+- M4A and other formats beyond WAV/MP3.
 
 ## Product Constraints
 
@@ -48,54 +80,28 @@ Product defaults and analysis thresholds are also summarized in `07-architecture
 - Audio files must remain local.
 - The FastAPI server must bind only to localhost in MVP.
 - The UI must be a single page.
-- The full uploaded audio timeline must be preserved.
+- The full uploaded audio timeline must be preserved in pitch extraction (no trimming).
 - The app must not trim leading silence, trailing silence, long endings, or non-vocal silent sections.
 - Guru and disciple clips may have different durations as long as each file is 5 minutes or shorter.
-- The backend must find similar portions between the two recordings and compare only those portions.
-- Non-similar additional portions from either uploaded audio must be left out of comparison and scoring.
-- Guru and disciple may sing in different scales.
-- Comparison must be relative to each recording's detected Sa, not absolute pitch.
-- The graph must show Indian swara labels including komal and tivra swaras.
+- The graph plots **full-timeline** F0 for both recordings on **wall-clock** `time_seconds` (no concatenated alignment index).
+- Comparison is in **Hz** on the Y-axis (linear scale; log scale is a later UX option).
 - Errors must be shown as popups.
 - After an error popup is dismissed, the UI must reset and the user must start again.
-
-## Swara Mapping
-
-| Swara Label | Symbol |
-| --- | --- |
-| Sa | S |
-| Komal Re | r |
-| Shuddha Re | R |
-| Komal Ga | g |
-| Shuddha Ga | G |
-| Shuddha Ma | m |
-| Tivra Ma | M |
-| Pa | P |
-| Komal Dha | d |
-| Shuddha Dha | D |
-| Komal Ni | n |
-| Shuddha Ni | N |
 
 ## Default Settings
 
 - Maximum audio length: 5 minutes per file.
 - Clip durations may differ.
 - Supported upload formats: WAV and MP3 only (M4A out of scope for MVP).
-- Tolerance default: 0 cents.
-- Tolerance range: 0 to 25 cents.
-- Tolerance step size: 5 cents.
 - Backend base URL: `http://127.0.0.1:8765/api/v1` (static port).
 - Initial analysis sample rate: 22050 Hz.
 - Initial pitch range: 50 Hz to 1000 Hz.
 - UI language: English.
-- Graph displays matched portions only; X-axis is concatenated alignment index across matched segments.
-- Overall match score: `total_matching_intervals * 100 / total_intervals` in matched comparable frames.
 
 ## Development Principles
 
 - Keep backend analysis separate from frontend rendering.
 - Keep the API contract frontend-agnostic so React or Kotlin frontends can be added later.
 - Prefer simple deterministic logic for MVP over heavy ML dependencies.
-- Use custom app logic for Sa detection, swara mapping, tolerance classification, and scoring.
-- Add focused tests around audio analysis, API responses, and graph data generation.
+- Add focused tests around audio loading, pitch extraction, API responses, and graph rendering.
 - Do not add later-scope features unless explicitly requested.

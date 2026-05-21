@@ -5,14 +5,9 @@
 The MVP test plan verifies:
 
 - Audio files are loaded and validated correctly.
-- Full timeline is preserved.
+- Full timeline is preserved in pitch extraction.
 - Pitch extraction produces usable frames.
-- Sa detection works on representative recordings.
-- Relative comparison works when guru and disciple use different scales.
-- Different-duration clips can still be compared when they contain similar portions.
-- Non-similar additional portions are excluded from comparison and scoring.
-- Tolerance classification works.
-- API returns stable schemas.
+- Compare API returns stable schemas with guru and disciple pitch arrays.
 - UI can complete the main workflow.
 - App handles errors with popups, then resets to the starting state.
 
@@ -50,67 +45,22 @@ Test cases:
 - Preserves frame count across silence.
 - Returns confidence or voiced probability.
 - Handles no-pitch audio without crash.
+- Returns `no_vocals_detected` when voiced fraction is below threshold.
 
-### Sa Detector
-
-Test cases:
-
-- Detects Sa from synthetic stable pitch.
-- Detects Sa independently for two different pitch scales.
-- Ignores low-confidence/unvoiced frames for Sa estimation.
-- Returns failure or low confidence when pitch data is insufficient.
-
-### Swara Mapper
+### Compare Service (when implemented)
 
 Test cases:
 
-- Maps Sa to `S`.
-- Maps Komal Re to `r`.
-- Maps Shuddha Re to `R`.
-- Maps Komal Ga to `g`.
-- Maps Shuddha Ga to `G`.
-- Maps Shuddha Ma to `m`.
-- Maps Tivra Ma to `M`.
-- Maps Pa to `P`.
-- Maps Komal Dha to `d`.
-- Maps Shuddha Dha to `D`.
-- Maps Komal Ni to `n`.
-- Maps Shuddha Ni to `N`.
-
-### Aligner
-
-Test cases:
-
-- Aligns identical contours.
-- Aligns same contour at slower speed.
-- Finds similar portions when guru and disciple clips have different durations.
-- Excludes extra non-similar material from either recording.
-- Returns no-match failure when no similar pitch-contour portion exists.
-- Handles missing/unvoiced frames.
-- Does not delete original time references.
-
-### Scorer
-
-Test cases:
-
-- Difference within tolerance is `match`.
-- Disciple above tolerance is `higher`.
-- Disciple below tolerance is `lower`.
-- Missing pitch is `unknown`.
-- Percentages sum to expected values.
-- `overall_score` equals `total_matching_intervals * 100 / total_intervals`.
+- Returns both `guru_pitch_frames` and `disciple_pitch_frames`.
+- Frame times start at 0 and advance by hop for each file.
+- Unvoiced frames have null `frequency_hz`.
+- Different-duration inputs both return full timelines.
 
 ## API Tests
 
 ### Health
 
 - `GET /api/v1/health` returns status `ok`.
-
-### Tolerance Settings
-
-- `GET /api/v1/settings/tolerance` returns current tolerance settings.
-- `PUT /api/v1/settings/tolerance` updates tolerance.
-- Invalid tolerance returns `invalid_tolerance`.
 
 ### Clear Session
 
@@ -127,13 +77,10 @@ Test cases:
 ### Compare
 
 - Valid guru and disciple files return `ComparisonResult`.
-- Response includes `guru_sa_hz`, `disciple_sa_hz`, `tolerance_cents`, frames, and metrics.
-- Different absolute scales still produce relative comparison.
-- Different durations still compare when similar portions exist.
-- Response includes matched segments and excluded ranges when extra portions are left out.
-- Invalid tolerance returns `invalid_tolerance` (outside 0–25).
+- Response includes `guru_pitch_frames` and `disciple_pitch_frames`.
+- Voiced sine fixtures produce expected `frequency_hz` near target.
 - No vocals returns `no_vocals_detected`.
-- No similar pattern returns `no_matching_pattern`.
+- Missing or corrupt file returns appropriate structured error.
 
 ## Frontend Tests
 
@@ -143,37 +90,29 @@ Test cases:
 
 - App window opens.
 - Upload buttons exist.
-- Tolerance defaults to 0.
-- Plus button increments by 5 (max 25).
-- Minus button decrements by 5 (min 0).
 - Client-side validation runs before API inspect.
-- Clear deletes temp files and resets tolerance to 0.
+- Clear deletes temp files and resets UI.
 - Compare is disabled until both files are valid.
 - Error message displays when backend returns error.
 - Error appears as a popup.
 - Dismissing an error popup resets the UI to the starting state.
-- Summary panel updates after successful comparison.
+- Graph shows two series after successful comparison.
 
 ## Integration Tests
 
 Test full backend pipeline using generated fixtures:
 
-1. Guru sine phrase at one Sa.
-2. Disciple sine phrase at different Sa but same relative contour.
-3. Disciple phrase shifted higher by known cents.
-4. Disciple phrase shifted lower by known cents.
-5. Files with leading and trailing silence.
-6. Different-duration files with one shared phrase and extra material in one file.
-7. Files with no matching melodic pattern.
+1. Guru sine phrase at fixed frequency.
+2. Disciple sine phrase at different frequency.
+3. Files with leading and trailing silence.
+4. Different-duration files (both return pitch; no alignment required).
+5. File with no usable pitch → `no_vocals_detected`.
 
 Expected:
 
-- Relative comparison works across different Sa values.
-- Higher/lower classifications match known offsets.
-- Silence remains represented.
-- Similar shared phrase is compared even when durations differ.
-- Extra non-similar portions are excluded from metrics.
-- No shared pattern returns a specific error.
+- Compare returns two pitch arrays.
+- Silence remains represented as unvoiced frames.
+- No Sa, swara, or scoring fields in response.
 
 ## Performance Tests
 
@@ -188,18 +127,15 @@ Targets:
 - Launch app from development environment.
 - Upload guru WAV.
 - Upload disciple WAV.
-- Adjust tolerance.
 - Compare.
-- Verify graph renders.
-- Verify swara labels render.
-- Verify metrics render.
+- Verify dual F0 graph renders (Hz vs seconds).
+- Verify guru and disciple lines are distinct.
 - Try invalid file.
 - Try file longer than 5 minutes.
 - Try empty/no-audio file.
 - Try audio with no vocals.
-- Try two files with no matching pattern.
-- Try file with silence.
 - Confirm errors show as popups and reset the UI after dismissal.
+- Clear session and confirm state resets.
 - Close app and confirm backend process exits.
 
 ## Acceptance Criteria
@@ -209,5 +145,19 @@ MVP is test-complete when:
 - Core unit tests pass.
 - API tests pass.
 - Main UI workflow works manually.
-- Synthetic comparison fixtures produce expected classifications.
+- Synthetic fixtures produce expected F0 in compare response.
 - No known crash exists for invalid files, no-pitch files, or backend errors.
+
+## Out of scope for MVP (tests to be added later)
+
+When Hindustani comparison features return, add tests for:
+
+- **Sa detector:** stable pitch histogram; independent guru/disciple Sa; `sa_detection_failed`.
+- **Swara mapper:** all symbols `S r R g G m M P d D n N`; 100-cent bins.
+- **Matched-portion finder:** similar windows; merge; `no_matching_pattern`; exclude extra material.
+- **Aligner / DTW:** identical and tempo-shifted contours within a segment.
+- **Scorer:** match/higher/lower/unknown vs tolerance; `overall_score` formula.
+- **API:** tolerance get/set; `GET /swara-map`; compare with `tolerance_cents` and full `ComparisonResult` fields.
+- **Integration:** same contour at different Sa; known cent offset → classification; different-duration matched phrase.
+- **Frontend:** tolerance +/- controls; swara axis; match/higher/lower graph regions; summary metrics panel.
+- **Manual QA:** tolerance adjust; different-scale compare; no matching pattern; Sa detection failure.

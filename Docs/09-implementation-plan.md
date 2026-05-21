@@ -2,7 +2,7 @@
 
 ## Build Strategy
 
-Build the product in vertical slices. Start with backend analysis correctness, then API, then frontend graph display, then packaging.
+Build the product in vertical slices. Start with backend pitch extraction correctness, then compare API, then frontend graph display, then packaging.
 
 ## Phase 0: Project Setup
 
@@ -25,9 +25,8 @@ Tasks:
 
 - Create FastAPI app.
 - Add `/api/v1/health`.
-- Add tolerance get/set endpoints.
 - Add clear-session endpoint.
-- Add Pydantic models.
+- Add Pydantic models (slim comparison models).
 - Add structured error model.
 - Add test client tests.
 
@@ -35,7 +34,7 @@ Deliverables:
 
 - Backend starts locally.
 - Health endpoint works.
-- Tolerance and clear-session endpoints work.
+- Clear-session endpoint works.
 - Basic API tests pass.
 
 ## Phase 2: Audio Loading and Validation
@@ -69,59 +68,22 @@ Deliverables:
 - Pitch frames include time, F0, confidence, voiced state.
 - Silence is represented, not trimmed.
 
-## Phase 4: Sa Detection and Swara Mapping
+## Phase 4: Compare API (Pitch Only)
 
 Tasks:
 
-- Implement Sa detection from reliable pitch frames.
-- Implement cents-from-Sa conversion.
-- Implement swara mapping table.
-- Add unit tests for Sa detection and swara mapping.
-
-Deliverables:
-
-- Guru and disciple Sa can be detected separately.
-- Different scales normalize correctly.
-- Swara symbols match PRD mapping.
-
-## Phase 5: Alignment and Scoring
-
-Tasks:
-
-- Implement `matched_portion_finder.py` per [`07-architecture.md`](07-architecture.md) (sliding windows, correlation/MACE thresholds).
-- Implement DTW with `librosa.sequence.dtw` inside each `MatchedSegment` only.
-- Preserve original guru/disciple times.
-- Exclude non-similar additional portions from comparison and scoring.
-- Implement tolerance classification.
-- Implement summary metrics (`overall_score = total_matching_intervals * 100 / total_intervals`).
-- Add `config.py` pyin/Sa thresholds per architecture doc.
-- Add tests for match/higher/lower/unknown.
-- Add tests for different-duration clips and no matching pattern.
-
-Deliverables:
-
-- Comparison frames generated.
-- Matched segments and excluded ranges generated.
-- Metrics generated.
-- Known synthetic offsets classify correctly.
-- No matching pattern returns a specific error.
-
-## Phase 6: Compare API
-
-Tasks:
-
-- Implement `POST /api/v1/compare`.
-- Accept guru file, disciple file, and tolerance.
-- Run full analysis pipeline.
-- Return `ComparisonResult`.
+- Implement `compare_service`: load both files, extract pitch, package `ComparisonResult`.
+- Implement `POST /api/v1/compare` (multipart guru + disciple).
+- Optional per-file `PitchSummary` (voiced counts).
 - Add integration tests.
 
 Deliverables:
 
-- API returns graph-ready comparison data.
+- API returns graph-ready pitch arrays for both recordings.
+- `no_vocals_detected` when pitch is too sparse.
 - Error cases return structured errors.
 
-## Phase 7: Frontend Shell
+## Phase 5: Frontend Shell
 
 Tasks:
 
@@ -129,7 +91,6 @@ Tasks:
 - Create main window.
 - Add `frontend/validation.py` for client-side pre-checks (WAV/MP3, size, duration).
 - Add upload controls.
-- Add tolerance control (default 0, range 0–25, step 5).
 - Add required Clear button.
 - Add compare button.
 - Add status and error display.
@@ -142,26 +103,24 @@ Deliverables:
 - App opens.
 - Backend health is checked.
 - Files can be selected.
-- Tolerance control works.
 - Errors are shown as popups and reset the UI.
 
-## Phase 8: Graph and Summary UI
+## Phase 6: Graph UI
 
 Tasks:
 
 - Implement `pyqtgraph` graph widget.
-- Render guru and disciple contours.
-- Render tolerance band.
-- Render match/higher/lower regions.
-- Render matched portions only; X-axis = concatenated `aligned_time`.
-- Render summary panel (no highest-deviation metric).
+- Plot guru `frequency_hz` vs `time_seconds`.
+- Plot disciple `frequency_hz` vs `time_seconds`.
+- Break or omit line segments for unvoiced frames.
+- Optional minimal summary (durations / voiced fraction).
 
 Deliverables:
 
-- Successful compare displays graph and metrics.
-- Graph uses Indian swara labels.
+- Successful compare displays dual pitch overlay.
+- Y-axis Hz, X-axis seconds.
 
-## Phase 9: Desktop Backend Management
+## Phase 7: Desktop Backend Management
 
 Tasks:
 
@@ -174,7 +133,7 @@ Deliverables:
 
 - User can launch desktop app without manually starting backend.
 
-## Phase 10: Packaging
+## Phase 8: Packaging
 
 Tasks:
 
@@ -189,14 +148,13 @@ Deliverables:
 - Packaged Windows app launches.
 - Main comparison workflow works in packaged build.
 
-## Phase 11: Final Verification
+## Phase 9: Final Verification
 
 Tasks:
 
 - Run automated tests.
 - Run manual QA checklist.
 - Verify no trimming behavior.
-- Verify different-scale comparison.
 - Verify invalid-file errors.
 - Verify app closes cleanly.
 
@@ -209,12 +167,22 @@ Deliverables:
 1. Backend models and health.
 2. Audio inspection.
 3. Pitch extraction.
-4. Sa detection.
-5. Swara mapping.
-6. Alignment and scoring.
-7. Compare API.
-8. Frontend shell.
-9. Graph rendering.
-10. Backend process management.
-11. Packaging.
-12. QA.
+4. Compare API (pitch only).
+5. Frontend shell.
+6. Graph rendering.
+7. Backend process management.
+8. Packaging.
+9. QA.
+
+## Out of scope for MVP (phases to be added later)
+
+Replaces former Phases 4–5 (Sa/swara, alignment/scoring) when scope expands:
+
+| Phase (proposed) | Deliverables |
+| --- | --- |
+| Sa + swara | `sa_detector`, `swara_mapper`, tests; `guru_sa_hz` / `disciple_sa_hz`; `GET /swara-map` |
+| Match + align | `matched_portion_finder`, `aligner`; `MatchedSegment`; `no_matching_pattern` |
+| Score + classify | `scorer`, tolerance API/UI; `ComparisonFrame`, `ComparisonMetrics`; match/higher/lower |
+| Graph + summary (extended) | Swara Y-axis, matched-only view, `aligned_time`, tolerance band, highlights, score panel |
+
+Also later: tolerance `GET`/`PUT`, processing states for Sa/align/score, highest deviation metric.
