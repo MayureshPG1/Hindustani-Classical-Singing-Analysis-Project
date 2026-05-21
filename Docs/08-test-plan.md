@@ -33,7 +33,7 @@ Test cases:
 
 - Loads WAV file.
 - Loads MP3 file if decoder is available.
-- Loads M4A file if decoder is available.
+- Rejects unsupported formats (e.g. M4A).
 - Converts stereo to mono.
 - Resamples to 22050 Hz.
 - Preserves leading silence.
@@ -98,7 +98,7 @@ Test cases:
 - Disciple below tolerance is `lower`.
 - Missing pitch is `unknown`.
 - Percentages sum to expected values.
-- Overall score decreases as deviation increases.
+- `overall_score` equals `total_matching_intervals * 100 / total_intervals`.
 
 ## API Tests
 
@@ -131,8 +131,7 @@ Test cases:
 - Different absolute scales still produce relative comparison.
 - Different durations still compare when similar portions exist.
 - Response includes matched segments and excluded ranges when extra portions are left out.
-- Invalid tolerance returns `invalid_tolerance`.
-- No pitch returns `no_pitch_detected`.
+- Invalid tolerance returns `invalid_tolerance` (outside 0–25).
 - No vocals returns `no_vocals_detected`.
 - No similar pattern returns `no_matching_pattern`.
 
@@ -144,9 +143,11 @@ Test cases:
 
 - App window opens.
 - Upload buttons exist.
-- Tolerance defaults to 50.
-- Plus button increments by 10.
-- Minus button decrements by 10.
+- Tolerance defaults to 0.
+- Plus button increments by 5 (max 25).
+- Minus button decrements by 5 (min 0).
+- Client-side validation runs before API inspect.
+- Clear deletes temp files and resets tolerance to 0.
 - Compare is disabled until both files are valid.
 - Error message displays when backend returns error.
 - Error appears as a popup.

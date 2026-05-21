@@ -30,7 +30,7 @@ Flow:
 5. User clicks `Upload Disciple Voice`.
 6. User selects the disciple audio file.
 7. App displays disciple file name, duration, format, and validation status.
-8. User leaves `Tolerance` at default `50` cents or edits it.
+8. User leaves `Tolerance` at default `0` cents or edits it (range 0–25, step 5).
 9. User clicks `Compare`.
 10. App sends both files and tolerance to the local FastAPI backend.
 11. Backend extracts pitch contours, detects Sa for both recordings, normalizes contours, finds similar portions, aligns them if needed, and computes comparison data.
@@ -80,7 +80,7 @@ Flow:
 
 1. User uploads both files.
 2. User changes `Tolerance` using plus/minus controls or direct input.
-3. Plus/minus controls change tolerance by 10 cents per click.
+3. Plus/minus controls change tolerance by 5 cents per click (clamped to 0–25).
 4. User clicks `Compare`.
 5. Backend classifies frames using the selected tolerance.
 

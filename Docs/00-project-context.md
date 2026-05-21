@@ -24,6 +24,8 @@ This repository follows a spec-driven workflow:
 10. `09-implementation-plan.md`: build sequence.
 11. `10-cursor-build-brief.md`: Cursor implementation brief.
 
+Product defaults and analysis thresholds are also summarized in `07-architecture.md` (matched-portion discovery, pyin cutoffs, port 8765).
+
 ## Locked MVP Decisions
 
 - Platform: Windows desktop first.
@@ -78,11 +80,16 @@ This repository follows a spec-driven workflow:
 
 - Maximum audio length: 2 minutes per file.
 - Clip durations may differ.
-- Tolerance default: 50 cents.
-- Tolerance step size: 10 cents.
+- Supported upload formats: WAV and MP3 only (M4A out of scope for MVP).
+- Tolerance default: 0 cents.
+- Tolerance range: 0 to 25 cents.
+- Tolerance step size: 5 cents.
+- Backend base URL: `http://127.0.0.1:8765/api/v1` (static port).
 - Initial analysis sample rate: 22050 Hz.
 - Initial pitch range: 50 Hz to 1000 Hz.
 - UI language: English.
+- Graph displays matched portions only; X-axis is concatenated alignment index across matched segments.
+- Overall match score: `total_matching_intervals * 100 / total_intervals` in matched comparable frames.
 
 ## Development Principles
 

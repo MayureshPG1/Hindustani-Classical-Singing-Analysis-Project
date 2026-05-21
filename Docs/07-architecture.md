@@ -9,7 +9,7 @@ PySide6 Desktop App
   |
   | httpx over localhost
   v
-FastAPI Backend on 127.0.0.1
+FastAPI Backend on 127.0.0.1:8765
   |
   | calls local analysis modules
   v
@@ -31,6 +31,7 @@ Responsibilities:
 - Launch or manage backend process.
 - Provide single-page UI.
 - Select files.
+- Run client-side file validation before API calls.
 - Validate basic UI state.
 - Send files and tolerance to backend.
 - Render graph with `pyqtgraph`.
@@ -90,6 +91,7 @@ backend/
       pitch_extractor.py
       sa_detector.py
       swara_mapper.py
+      matched_portion_finder.py
       aligner.py
       scorer.py
       comparator.py
@@ -101,6 +103,8 @@ frontend/
   app.py
   main_window.py
   api_client.py
+  backend_manager.py
+  validation.py
   widgets/
     upload_panel.py
     tolerance_control.py
@@ -134,13 +138,14 @@ requirements.txt
 8. Detect Sa separately for guru and disciple.
 9. Convert F0 to cents relative to detected Sa.
 10. Map cents to swara labels.
-11. Find similar portions between guru and disciple pitch contours.
+11. Find similar portions with `matched_portion_finder` (sliding windows; see below).
 12. Leave non-similar additional portions out of comparison and scoring.
-13. Align matched pitch contours with `librosa.sequence.dtw` when useful.
-14. Calculate difference in cents.
-15. Classify frames using tolerance.
-16. Calculate summary metrics.
-17. Return `ComparisonResult`.
+13. Align each `MatchedSegment` with `librosa.sequence.dtw` only (not full files).
+14. Build `aligned_frames` with cumulative `aligned_time` across concatenated matched segments.
+15. Calculate difference in cents.
+16. Classify frames using tolerance (0–25 cents).
+17. Calculate summary metrics (`overall_score = total_matching_intervals * 100 / total_intervals`).
+18. Return `ComparisonResult` with graph-ready matched-only arrays.
 
 ## Sa Detection Strategy
 
@@ -155,7 +160,38 @@ Initial MVP algorithm:
 
 Important rule:
 
-- Excluding unvoiced frames from Sa estimation must not remove them from the graph timeline.
+- Excluding unvoiced frames from Sa estimation must not remove them from the internal timeline; the comparison graph displays matched portions only.
+
+### pyin and vocal thresholds (`config.py`)
+
+| Constant | Value | Use |
+| --- | --- | --- |
+| `SR` | 22050 | Analysis sample rate |
+| `HOP_LENGTH` | 220 | ~10 ms frames |
+| `FMIN_HZ` / `FMAX_HZ` | 50 / 1000 | `librosa.pyin` range |
+| `VOICED_PROB_PLOT_MIN` | 0.55 | Reliable pitch for compare/plot |
+| `VOICED_PROB_SILENT_MAX` | 0.35 | Treat as silent/unvoiced |
+| `VOICED_PROB_SA_MIN` | 0.65 | Sa estimation only |
+| `SA_MIN_VOICED_FRAMES` | 50 | Minimum voiced frames for Sa |
+| `SA_HISTOGRAM_MIN_PEAK_WEIGHT` | 0.15 | Below → `sa_detection_failed` |
+| `MIN_VOICED_FRAMES_TOTAL` | 30 | Below → `no_vocals_detected` |
+| `MIN_VOICED_FRACTION` | 0.05 | Below → `no_vocals_detected` |
+
+Use `no_vocals_detected` only (do not expose `no_pitch_detected`).
+
+## Matched-Portion Discovery
+
+Module: `matched_portion_finder.py` (runs before per-segment DTW).
+
+**Sliding windows:** `min_window_seconds` 1.0, `window_step_seconds` 0.25, `min_voiced_ratio_in_window` 0.40, `min_voiced_frames` 30.
+
+**Coarse match:** Resample voiced `cents_from_sa` in each guru/disciple window pair to length L=50; accept when Pearson `r >= 0.70` and MACE `<= 80` cents, or normalized DTW cost `<= 1.2`.
+
+**Merge:** Adjacent guru windows with gap `< 0.5 s` when disciple mappings overlap.
+
+**`no_matching_pattern` when:** no candidate passes; matched guru voiced duration `< 20%` of guru voiced total; or longest match `< 0.8 s` voiced.
+
+**DTW:** `librosa.sequence.dtw` on raw voiced cents inside each `MatchedSegment` only.
 
 ## Graph Rendering Strategy
 
@@ -165,8 +201,8 @@ Graph data:
 
 - Guru aligned cents.
 - Disciple aligned cents.
-- Guru original time.
-- Disciple original time.
+- `aligned_time` (0…N−1 across concatenated matched segments).
+- Guru/disciple original times per frame (debug).
 - Matched segments.
 - Excluded guru ranges.
 - Excluded disciple ranges.
@@ -190,10 +226,11 @@ Frontend renders:
 Recommended MVP:
 
 - Desktop app starts backend as a subprocess on launch.
-- Backend binds to `127.0.0.1` on a configured or available port.
-- Frontend polls `/api/v1/health`.
-- Frontend uses the backend tolerance endpoints to get/set tolerance.
-- Frontend calls the clear-session endpoint when the user clicks Clear or after an error popup is dismissed.
+- Backend binds to `127.0.0.1:8765` (static port).
+- Frontend polls `http://127.0.0.1:8765/api/v1/health`.
+- Frontend uses the backend tolerance endpoints to get/set tolerance (default 0, range 0–25, step 5).
+- Frontend calls the clear-session endpoint when the user clicks Clear; deletes temp files on Clear, error dismiss, and exit.
+- Session temp root: e.g. `%TEMP%/hcsa-session/{uuid}/`.
 - Frontend shuts down backend process when app exits.
 
 Alternative for later:
@@ -220,8 +257,8 @@ Packaging requirements:
 - No login.
 - No remote telemetry.
 - Backend binds only to localhost.
-- Uploaded files are processed locally.
-- Temporary files are cleaned after processing.
+- Uploaded files are processed locally (WAV and MP3 only).
+- Temporary files are deleted on session clear, UI reset after errors, and app exit.
 
 ## Later Architecture Extension
 

@@ -88,12 +88,13 @@ Deliverables:
 
 Tasks:
 
-- Implement matched-portion discovery for different-duration recordings.
-- Implement DTW alignment with `librosa.sequence.dtw`.
+- Implement `matched_portion_finder.py` per [`07-architecture.md`](07-architecture.md) (sliding windows, correlation/MACE thresholds).
+- Implement DTW with `librosa.sequence.dtw` inside each `MatchedSegment` only.
 - Preserve original guru/disciple times.
 - Exclude non-similar additional portions from comparison and scoring.
 - Implement tolerance classification.
-- Implement summary metrics.
+- Implement summary metrics (`overall_score = total_matching_intervals * 100 / total_intervals`).
+- Add `config.py` pyin/Sa thresholds per architecture doc.
 - Add tests for match/higher/lower/unknown.
 - Add tests for different-duration clips and no matching pattern.
 
@@ -126,8 +127,10 @@ Tasks:
 
 - Create PySide6 app.
 - Create main window.
+- Add `frontend/validation.py` for client-side pre-checks (WAV/MP3, size, duration).
 - Add upload controls.
-- Add tolerance control.
+- Add tolerance control (default 0, range 0–25, step 5).
+- Add required Clear button.
 - Add compare button.
 - Add status and error display.
 - Add API client using `httpx`.
@@ -150,8 +153,8 @@ Tasks:
 - Render guru and disciple contours.
 - Render tolerance band.
 - Render match/higher/lower regions.
-- Render unvoiced gaps.
-- Render summary panel.
+- Render matched portions only; X-axis = concatenated `aligned_time`.
+- Render summary panel (no highest-deviation metric).
 
 Deliverables:
 
@@ -162,8 +165,8 @@ Deliverables:
 
 Tasks:
 
-- Start FastAPI backend from frontend app.
-- Poll health endpoint.
+- Start FastAPI backend from frontend app on port **8765**.
+- Poll health endpoint at `http://127.0.0.1:8765/api/v1/health`.
 - Stop backend on app close.
 - Handle backend unavailable state.
 

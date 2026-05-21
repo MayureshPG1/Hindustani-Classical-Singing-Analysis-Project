@@ -69,7 +69,7 @@ The app solves this by comparing two recorded audio files and creating a visual 
 3. App validates the file and displays basic file information.
 4. User clicks "Upload Disciple Voice" and selects an audio file.
 5. App validates the file and displays basic file information.
-6. User reviews or edits the tolerance value. The default tolerance is 50 cents.
+6. User reviews or edits the tolerance value. The default tolerance is 0 cents (range 0–25).
 7. User clicks "Compare".
 8. App processes both audio files locally.
 9. App normalizes guru and disciple pitch contours relative to their detected Sa values.
@@ -85,11 +85,11 @@ The MVP is a single-page desktop UI.
 
 - Button: "Upload Guru Voice"
 - Button: "Upload Disciple Voice"
-- Editable numeric field: "Tolerance", default value 50
+- Editable numeric field: "Tolerance", default value 0 (range 0–25)
 - Button/control: decrease tolerance
 - Button/control: increase tolerance
 - Button: "Compare"
-- Optional button: "Clear"
+- Button: "Clear" (resets session, deletes temp files, tolerance to 0)
 
 ### Tolerance Control
 
@@ -97,10 +97,11 @@ The front page shall include an editable tolerance field named "Tolerance". The 
 
 Requirements:
 
-- Default value: 50 cents.
+- Default value: 0 cents.
+- Valid range: 0 to 25 cents.
 - User can type a numeric value directly.
 - User can increase or decrease the value using plus and minus buttons next to the field.
-- Plus and minus controls change the value by 10 cents per click.
+- Plus and minus controls change the value by 5 cents per click.
 - The comparison graph and statistics shall use the current tolerance value.
 - Lower tolerance makes the comparison stricter.
 - Higher tolerance makes the comparison more forgiving.
@@ -136,10 +137,9 @@ Requirements:
   - Timeline
 
 - Summary panel:
-  - Overall match score
+  - Overall match score (`total_matching_intervals * 100 / total_intervals`)
   - Average pitch deviation
   - Percentage of matched sections
-  - Highest deviation points
   - Percentage of higher-than-guru sections
   - Percentage of lower-than-guru sections
 
@@ -160,7 +160,6 @@ Recommended MVP support:
 
 - WAV
 - MP3
-- M4A, if local decoding support is stable in the chosen packaging setup
 
 ### File Constraints
 
@@ -207,7 +206,7 @@ Implementation library decision:
 
 - Use `librosa.load(..., mono=True, sr=22050)` as the primary audio loading path.
 - Use `soundfile` as the primary file-reading backend used by `librosa`.
-- Bundle FFmpeg support through `imageio-ffmpeg` so MP3/M4A decoding is more reliable in the packaged Windows app.
+- Bundle FFmpeg support through `imageio-ffmpeg` so MP3 decoding is reliable in the packaged Windows app.
 - Use NumPy arrays as the internal audio representation.
 - Do not call trimming helpers such as silence trimming; preserve the full loaded waveform and full time axis.
 
@@ -294,8 +293,9 @@ The guru and disciple recordings may not have identical timing. The app may alig
 
 Recommended approach:
 
-- Use `librosa.sequence.dtw` for dynamic time warping on pitch contour features.
-- Align similar melodic shapes even if the disciple sings slower or faster.
+- Find similar pitch-contour portions with sliding-window discovery (see `07-architecture.md`).
+- Run `librosa.sequence.dtw` only inside each matched segment.
+- Align similar melodic shapes even if the disciple sings slower or faster within a segment.
 - Find similar pitch-contour portions even when guru and disciple files have different durations.
 - Compare only matched similar portions.
 - Leave non-similar additional portions from either uploaded audio out of comparison and scoring.
@@ -317,8 +317,9 @@ Tolerance behavior:
 - Match: absolute pitch difference is less than or equal to the current tolerance value.
 - Higher: disciple pitch is more than the tolerance value above the guru pitch.
 - Lower: disciple pitch is more than the tolerance value below the guru pitch.
-- Default tolerance: 50 cents.
-- Tolerance step size: 10 cents.
+- Default tolerance: 0 cents.
+- Tolerance range: 0 to 25 cents.
+- Tolerance step size: 5 cents.
 
 The tolerance value shall come from the front-page Tolerance field and shall be editable before each comparison.
 
@@ -335,7 +336,7 @@ There is no single Python package that covers the complete product: Hindustani S
 
 | PRD Task | Final Library Choice | Justification |
 | --- | --- | --- |
-| Load audio | `librosa.load`, `soundfile`, `imageio-ffmpeg` | `librosa.load` loads files into NumPy arrays, can convert to mono, and can resample. `soundfile` is the primary audio backend. `imageio-ffmpeg` helps package FFmpeg decoding support for MP3/M4A on Windows. |
+| Load audio | `librosa.load`, `soundfile`, `imageio-ffmpeg` | `librosa.load` loads files into NumPy arrays, can convert to mono, and can resample. `soundfile` is the primary audio backend. `imageio-ffmpeg` helps package FFmpeg decoding support for MP3 on Windows. |
 | Preserve silence and endings | Custom logic with `numpy` arrays | The product explicitly must not trim endings or silent/non-vocal sections, so the backend should avoid silence-trimming helpers and preserve the full timeline. |
 | Mono conversion | `librosa.load(..., mono=True)` or `librosa.to_mono` | Built-in support, simple, and consistent with the rest of the audio pipeline. |
 | Resampling | `librosa.load(..., sr=22050)` with `soxr` | Keeps analysis predictable across file formats and sample rates. `librosa` uses high-quality `soxr` resampling. |
@@ -358,7 +359,7 @@ Recommended audio-comparison pipeline:
 7. Auto-detect Sa separately for guru and disciple.
 8. Convert both F0 contours to cents relative to their own Sa.
 9. Map cents to swara labels using `S r R g G m M P d D n N`.
-10. Align contours with DTW where useful.
+10. Find similar portions; align each matched segment with DTW.
 11. Compute disciple-minus-guru cents difference.
 12. Classify each aligned frame using the selected tolerance.
 13. Return graph-ready JSON to the frontend.
@@ -370,7 +371,7 @@ The graph is the primary output of the app.
 
 ### Required Graph Elements
 
-- X-axis: Time or aligned phrase progression, while preserving visible silent/unvoiced regions.
+- X-axis: Concatenated alignment index across matched segments (`aligned_time` 0…N−1).
 - Y-axis: Indian swara labels, backed internally by cents relative to Sa.
 - Swara labels include komal and tivra swaras using the defined mapping.
 - Guru line: one clear color.
@@ -380,26 +381,19 @@ The graph is the primary output of the app.
 - Disciple lower than guru: highlighted below the guru contour.
 - Gaps or unvoiced areas: visible breaks or muted segments.
 - Tolerance band around the guru contour based on the current tolerance value.
-- Graph and statistics should focus on matched similar portions only.
-- Non-similar additional portions should be left out of the comparison graph and metrics.
+- Graph and statistics focus on matched similar portions only (no full-upload timeline on the graph).
+- Non-similar additional portions are left out of the comparison graph and metrics.
 
-### Optional Graph Elements
+### Deferred Graph Elements (Later Scope)
 
-- Hover tooltip showing:
-  - Time
-  - Guru pitch
-  - Disciple pitch
-  - Difference in cents
-  - Higher, lower, or match
-
+- Hover tooltips.
 - Zoom and pan.
-- Markers for major deviation points.
 
 ### Summary Metrics
 
 The app should calculate and display:
 
-- Overall match score from 0 to 100.
+- Overall match score from 0 to 100: `total_matching_intervals * 100 / total_intervals` over comparable frames in matched regions.
 - Average absolute pitch deviation in cents.
 - Percentage of frames within match threshold.
 - Percentage of frames where disciple is higher.
@@ -433,7 +427,7 @@ Finalized MVP technology choices:
 10. `numpy` and `scipy` for numerical processing, Sa detection, scoring, and smoothing/filtering operations.
 11. `soundfile` for audio file reading support used by `librosa`.
 12. `soxr` for high-quality resampling through `librosa`.
-13. `imageio-ffmpeg` to package FFmpeg support for MP3/M4A decoding on Windows.
+13. `imageio-ffmpeg` to package FFmpeg support for MP3 decoding on Windows.
 14. `PyInstaller` for compiling into a local Windows desktop executable.
 
 Recommended MVP choice:
@@ -604,10 +598,10 @@ The app shall allow the user to set the pitch tolerance used for matching guru a
 Acceptance criteria:
 
 - Tolerance field is visible on the single-page UI.
-- Default tolerance is 50 cents.
+- Default tolerance is 0 cents (range 0–25).
 - User can edit tolerance manually.
 - User can increase or decrease tolerance using plus and minus controls.
-- Plus and minus controls change tolerance by 10 cents per click.
+- Plus and minus controls change tolerance by 5 cents per click.
 - Compare uses the currently displayed tolerance value.
 - The result displays the tolerance value used for analysis.
 
@@ -765,7 +759,7 @@ Recommended high-level structure:
    - Maps relative pitch regions to Indian swara labels for graph display.
 
 5. Alignment Module
-   - Optionally aligns guru and disciple contours using `librosa.sequence.dtw`.
+   - Aligns guru and disciple contours using `librosa.sequence.dtw` inside each matched segment only.
    - Finds similar pitch-contour portions across different-duration recordings.
    - Leaves non-similar additional portions out of comparison and scoring.
    - Supports pitch comparison when performances are slower or faster.
@@ -815,10 +809,10 @@ Recommended high-level structure:
 ### ToleranceSettings
 
 - tolerance_cents
-- default_tolerance_cents: 50
-- minimum_tolerance_cents
-- maximum_tolerance_cents
-- step_cents: 10
+- default_tolerance_cents: 0
+- minimum_tolerance_cents: 0
+- maximum_tolerance_cents: 25
+- step_cents: 5
 
 ### PitchFrame
 
@@ -862,7 +856,7 @@ The MVP is complete when:
 
 - A user can open a local desktop app.
 - The app shows one page with guru upload, disciple upload, compare, and graph area.
-- The page includes a Tolerance field with default value 50 and plus/minus controls that change the value by 10 cents.
+- The page includes a Tolerance field with default value 0 and plus/minus controls that change the value by 5 cents (range 0–25).
 - The user can upload two valid audio files.
 - The app extracts pitch from both files.
 - The app auto-detects Sa for both files.
@@ -975,7 +969,7 @@ Mitigation:
 14. Export is later scope.
 15. Backend and frontend live in the same repository for MVP.
 16. Backend is a Python FastAPI API so future React or Kotlin frontends can reuse it.
-17. Tolerance plus/minus step size is 10 cents.
+17. Tolerance default is 0 cents; range 0–25; plus/minus step size is 5 cents.
 18. Swara labels use full Indian names such as Sa, Re, Ga, and Ma.
 19. MVP includes komal and tivra swara labels using the defined symbol mapping.
 20. MVP uses Python `3.11.x`.
@@ -987,9 +981,14 @@ Mitigation:
 26. MVP uses `PyInstaller` for Windows packaging.
 27. MVP does not include `praat-parselmouth`, `pyworld`, `Essentia`, `CREPE`, or `torchcrepe` as default dependencies.
 
-## 20. Remaining Clarifying Questions
+## 20. Resolved Clarifications (MVP)
 
-1. What should be the minimum and maximum allowed values for the Tolerance field?
+1. Tolerance range is 0–25 cents; default 0; step 5.
+2. Overall score is `total_matching_intervals * 100 / total_intervals`.
+3. Highest deviation points are out of scope.
+4. Matched-portion and pyin thresholds are defined in `07-architecture.md`.
+5. Graph shows matched portions only with concatenated X-axis.
+6. WAV and MP3 only; static backend port 8765; Clear required; client-side pre-validation; `no_vocals_detected` only.
 
 ## 21. Current Assumptions
 

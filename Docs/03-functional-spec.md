@@ -55,7 +55,8 @@ Supported MVP formats:
 
 - WAV
 - MP3
-- M4A if decoding works reliably in the packaged Windows app
+
+The frontend shall perform basic client-side validation before calling the API (extension whitelist, file exists, size > 0, duration ≤ 120 s when metadata is available locally).
 
 ### FS-5: Configure Tolerance
 
@@ -63,16 +64,14 @@ The app shall provide a `Tolerance` numeric field.
 
 Acceptance criteria:
 
-- Default tolerance is 50 cents.
+- Default tolerance is 0 cents.
+- Valid range is 0 to 25 cents inclusive.
 - User can type a numeric tolerance value.
-- Plus button increases tolerance by 10 cents.
-- Minus button decreases tolerance by 10 cents.
+- Plus button increases tolerance by 5 cents.
+- Minus button decreases tolerance by 5 cents.
 - Compare uses the currently displayed tolerance value.
 - Result displays the tolerance used.
-
-Open value constraint:
-
-- Minimum and maximum tolerance values are not yet finalized.
+- Values outside 0–25 return `invalid_tolerance`.
 
 ### FS-6: Compare Recordings
 
@@ -135,14 +134,15 @@ Acceptance criteria:
 
 ### FS-11: Align Pitch Contours
 
-The backend may align pitch contours to support comparison.
+The backend shall align pitch contours only within matched similar portions.
 
 Acceptance criteria:
 
-- Use `librosa.sequence.dtw` where useful.
-- Alignment supports slower/faster singing.
+- Use `librosa.sequence.dtw` inside each `MatchedSegment` only (not on full-file contours).
+- Alignment supports slower/faster singing within a matched segment.
 - Alignment is used only for pitch comparison.
 - MVP does not show detailed rhythm, taal, or early/late feedback.
+- Matched-portion discovery uses sliding-window correlation/DTW thresholds defined in [`07-architecture.md`](07-architecture.md).
 
 ### FS-12: Match Similar Portions Across Different Durations
 
@@ -176,7 +176,7 @@ The backend shall detect common invalid analysis scenarios and return specific e
 Required error cases:
 
 - No audio data or empty decoded waveform: `no_audio_detected`.
-- No vocal/pitch content detected: `no_vocals_detected` or `no_pitch_detected`.
+- No vocal/pitch content detected: `no_vocals_detected` only.
 - Sa cannot be detected reliably: `sa_detection_failed`.
 - No similar matching pattern exists between guru and disciple recordings: `no_matching_pattern`.
 - Unexpected comparison failure: `comparison_failed`.
@@ -190,16 +190,18 @@ Acceptance criteria:
 
 ### FS-15: Show Graph
 
-The frontend shall render a graphical overlay.
+The frontend shall render a graphical overlay for matched portions only.
 
 Acceptance criteria:
 
 - Guru and disciple contours are visually distinct.
-- Y-axis uses Indian swara labels.
-- Graph includes tolerance band around guru contour.
+- Y-axis uses Indian swara labels (fixed 100-cent swara bins; shruti microtones out of scope).
+- X-axis uses concatenated `aligned_time` across matched segments (0…N−1), not full-upload wall-clock time.
+- Graph displays matched similar portions only (no full-timeline overlay).
+- Graph includes tolerance band around guru contour on matched frames.
 - Graph shows match, higher, and lower sections.
-- Silent/unvoiced regions do not create misleading lines.
-- Graph and metrics focus on matched similar portions only.
+- Silent/unvoiced regions within matched segments do not create misleading lines.
+- Hover tooltips and zoom/pan are deferred (not required for MVP).
 
 ### FS-16: Show Statistics
 
@@ -207,13 +209,25 @@ The frontend shall show statistical analysis.
 
 Required metrics:
 
-- Overall score from 0 to 100.
+- Overall score from 0 to 100: `total_matching_intervals * 100 / total_intervals` over comparable frames in matched regions.
 - Average absolute deviation in cents.
 - Match percentage.
 - Higher percentage.
 - Lower percentage.
 - Tolerance used.
 - Metrics exclude non-similar additional portions left out of comparison.
+
+Highest deviation points are out of scope for MVP.
+
+### FS-18: Clear Session and Temporary Files
+
+The app shall provide a Clear control and clean up session data.
+
+Acceptance criteria:
+
+- Clear button is visible on the single-page UI.
+- Clear calls `POST /api/v1/session/clear`, resets UI, restores tolerance to 0, and deletes all temporary session files.
+- Error popup dismissal performs the same reset and temp-file deletion.
 
 ### FS-17: Do Not Provide Coaching Feedback
 

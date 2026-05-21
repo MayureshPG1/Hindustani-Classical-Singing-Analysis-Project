@@ -41,7 +41,7 @@ Recommended desktop layout:
    - `Tolerance` numeric field.
    - Minus and plus controls.
    - `Compare` button.
-   - Optional `Clear` button.
+   - `Clear` button (required for MVP).
    - Summary statistics panel as part of this same row.
 
 4. Bottom/status area:
@@ -55,8 +55,9 @@ Recommended desktop layout:
 Behavior:
 
 - Opens file picker.
-- Accepts supported audio formats.
-- Updates guru file status.
+- Accepts WAV and MP3 only.
+- Runs client-side checks (extension, readable file, size > 0, duration ≤ 120 s when available) before calling the API.
+- Updates guru file status after `POST /audio/inspect`.
 - Shows validation errors as popups and resets UI after dismissal.
 
 ### Upload Disciple Voice
@@ -64,8 +65,9 @@ Behavior:
 Behavior:
 
 - Opens file picker.
-- Accepts supported audio formats.
-- Updates disciple file status.
+- Accepts WAV and MP3 only.
+- Runs client-side checks (extension, readable file, size > 0, duration ≤ 120 s when available) before calling the API.
+- Updates disciple file status after `POST /audio/inspect`.
 - Shows validation errors as popups and resets UI after dismissal.
 
 ### Tolerance
@@ -73,17 +75,18 @@ Behavior:
 Behavior:
 
 - Numeric editable field.
-- Default value is 50.
+- Default value is 0.
+- Valid range 0 to 25 cents.
 - Unit is cents.
-- Minus button decrements by 10.
-- Plus button increments by 10.
+- Minus button decrements by 5 (not below 0).
+- Plus button increments by 5 (not above 25).
 - Value used for next comparison.
 
 Display:
 
 - Label: `Tolerance`
 - Unit display: `cents`
-- Example: `Tolerance [-] [50] [+] cents`
+- Example: `Tolerance [-] [0] [+] cents`
 
 ### Compare
 
@@ -96,10 +99,12 @@ Behavior:
 
 ### Clear
 
-Optional MVP behavior:
+Required MVP behavior:
 
 - Clears selected files, graph, metrics, and errors.
-- Restores tolerance to default 50 unless implementation decides to preserve user tolerance.
+- Calls `POST /api/v1/session/clear`.
+- Deletes all temporary session files.
+- Restores tolerance to default 0.
 
 ## File Status Display
 
@@ -143,10 +148,10 @@ Graph requirements:
 - Higher and lower deviations should be visually different.
 - Tolerance band should be visible around the guru contour.
 - Silent/unvoiced sections should appear as gaps or muted regions.
-- Y-axis should show Indian swara labels.
-- X-axis should show time or aligned phrase progression.
-- If recordings have different durations, the graph should focus on the matched similar portions.
-- Non-similar additional portions should be left out of the comparison graph and statistics.
+- Y-axis should show Indian swara labels (fixed 100-cent bins).
+- X-axis should show concatenated alignment index across matched segments (`aligned_time` 0…N−1), not full-upload wall-clock time.
+- Graph displays matched similar portions only.
+- Non-similar additional portions are left out of the comparison graph and statistics.
 
 Recommended visual encoding:
 
@@ -158,13 +163,7 @@ Recommended visual encoding:
 - Disciple lower: cool highlight.
 - Unknown/unvoiced: greyed or broken line.
 
-Hover tooltip, if implemented:
-
-- Time.
-- Guru swara and cents.
-- Disciple swara and cents.
-- Difference in cents.
-- Classification: match, higher, lower, unknown.
+Hover tooltip and zoom/pan are deferred (not required for MVP).
 
 ## Summary Statistics UX
 
@@ -207,6 +206,7 @@ Error behavior:
 - Show a modal popup with a clear message.
 - After the user dismisses the popup, refresh/reset the UI to the starting state.
 - Clear selected files, graph data, metrics, progress status, and validation state.
+- Delete all temporary session files.
 - Keep the app usable.
 - User must start again by uploading both files.
 

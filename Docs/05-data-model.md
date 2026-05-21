@@ -91,20 +91,20 @@ Represents comparison tolerance.
 Fields:
 
 - `tolerance_cents`: float.
-- `default_tolerance_cents`: float, default 50.
-- `step_cents`: float, default 10.
-- `minimum_tolerance_cents`: optional float, not finalized.
-- `maximum_tolerance_cents`: optional float, not finalized.
+- `default_tolerance_cents`: float, default 0.
+- `step_cents`: float, default 5.
+- `minimum_tolerance_cents`: float, default 0.
+- `maximum_tolerance_cents`: float, default 25.
 
 Example:
 
 ```json
 {
-  "tolerance_cents": 50,
-  "default_tolerance_cents": 50,
-  "step_cents": 10,
-  "minimum_tolerance_cents": null,
-  "maximum_tolerance_cents": null
+  "tolerance_cents": 0,
+  "default_tolerance_cents": 0,
+  "step_cents": 5,
+  "minimum_tolerance_cents": 0,
+  "maximum_tolerance_cents": 25
 }
 ```
 
@@ -273,7 +273,9 @@ Example:
 
 Fields:
 
-- `overall_score`: float.
+- `overall_score`: float. Formula: `total_matching_intervals * 100 / total_intervals`, where the numerator counts frames classified as `match` and the denominator counts all comparable frames in matched regions.
+- `total_matching_intervals`: integer (optional explicit field for clients/tests).
+- `total_intervals`: integer (optional explicit field for clients/tests).
 - `average_deviation_cents`: float.
 - `match_percentage`: float.
 - `higher_percentage`: float.
@@ -318,7 +320,6 @@ Common error codes:
 - `file_too_long`
 - `no_audio_detected`
 - `decode_failed`
-- `no_pitch_detected`
 - `no_vocals_detected`
 - `sa_detection_failed`
 - `no_matching_pattern`

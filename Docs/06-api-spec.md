@@ -7,10 +7,10 @@ The backend is a local FastAPI service used by the Python desktop frontend. The 
 Base URL:
 
 ```txt
-http://127.0.0.1:{port}/api/v1
+http://127.0.0.1:8765/api/v1
 ```
 
-The desktop app may choose an available local port at startup.
+MVP uses a static local port **8765**. The desktop app and backend subprocess must use this port consistently.
 
 ## API Principles
 
@@ -94,11 +94,11 @@ Response:
 
 ```json
 {
-  "tolerance_cents": 50,
-  "default_tolerance_cents": 50,
-  "step_cents": 10,
-  "minimum_tolerance_cents": null,
-  "maximum_tolerance_cents": null
+  "tolerance_cents": 0,
+  "default_tolerance_cents": 0,
+  "step_cents": 5,
+  "minimum_tolerance_cents": 0,
+  "maximum_tolerance_cents": 25
 }
 ```
 
@@ -116,7 +116,7 @@ Request:
 
 ```json
 {
-  "tolerance_cents": 60
+  "tolerance_cents": 15
 }
 ```
 
@@ -124,11 +124,11 @@ Response:
 
 ```json
 {
-  "tolerance_cents": 60,
-  "default_tolerance_cents": 50,
-  "step_cents": 10,
-  "minimum_tolerance_cents": null,
-  "maximum_tolerance_cents": null
+  "tolerance_cents": 15,
+  "default_tolerance_cents": 0,
+  "step_cents": 5,
+  "minimum_tolerance_cents": 0,
+  "maximum_tolerance_cents": 25
 }
 ```
 
@@ -166,7 +166,7 @@ Example request fields:
 ```txt
 guru_file=@guru.wav
 disciple_file=@disciple.wav
-tolerance_cents=50
+tolerance_cents=0
 ```
 
 Success response shape:
@@ -195,7 +195,7 @@ Success response shape:
   },
   "guru_sa_hz": 240.0,
   "disciple_sa_hz": 220.0,
-  "tolerance_cents": 50,
+  "tolerance_cents": 0,
   "guru_pitch_frames": [],
   "disciple_pitch_frames": [],
   "matched_segments": [],
@@ -221,8 +221,12 @@ Success response shape:
 Comparison behavior:
 
 - Guru and disciple files may have different durations as long as each file is 2 minutes or shorter.
-- Backend must find similar pitch-contour portions and compare those portions.
+- Supported formats: WAV and MP3 only.
+- Backend must find similar pitch-contour portions and compare those portions (see [`07-architecture.md`](07-architecture.md) for algorithm parameters).
+- DTW runs only inside each `MatchedSegment`, not on full-file contours.
 - Non-similar additional portions from either file are left out of comparison and scoring.
+- Graph-ready `aligned_frames` and pitch arrays in the response cover **matched portions only**; `aligned_time` is a cumulative index across concatenated matched segments (0…N−1).
+- `overall_score` = `total_matching_intervals * 100 / total_intervals` over comparable frames in matched regions.
 - Excluded portions are represented in `excluded_guru_ranges` and `excluded_disciple_ranges`.
 - If no sufficiently similar vocal pattern is found, the API returns `no_matching_pattern`.
 
@@ -273,7 +277,8 @@ Behavior:
 - Clears cached analysis results.
 - Clears graph-ready comparison data.
 - Resets processing state.
-- Restores tolerance to default 50 unless frontend explicitly sets another value afterward.
+- Deletes all temporary session files on disk.
+- Restores tolerance to default 0 unless frontend explicitly sets another value afterward.
 
 Response:
 
@@ -291,8 +296,7 @@ Response:
 | `file_too_long` | File duration exceeds 120 seconds. |
 | `no_audio_detected` | Decoded file contains no usable audio data. |
 | `decode_failed` | Backend could not decode audio. |
-| `no_pitch_detected` | Pitch extraction found no reliable pitch. |
-| `no_vocals_detected` | Audio exists, but no usable vocal pitch pattern was found. |
+| `no_vocals_detected` | Audio exists, but no usable vocal pitch pattern was found (includes cases where pitch extraction is too sparse). |
 | `sa_detection_failed` | Sa could not be estimated reliably. |
 | `no_matching_pattern` | Guru and disciple recordings do not contain a sufficiently similar pitch-contour portion to compare. |
 | `comparison_failed` | Unexpected comparison failure. |
@@ -300,13 +304,14 @@ Response:
 
 ## Frontend API Client Behavior
 
-- Start backend process if needed.
+- Run basic client-side file validation before `POST /audio/inspect` (extension `.wav`/`.mp3`, file exists, size > 0, duration ≤ 120 s when metadata is available).
+- Start backend process if needed on port **8765**.
 - Poll `GET /health` until backend is ready.
 - Use `GET /settings/tolerance` on startup to initialize tolerance UI.
 - Use `PUT /settings/tolerance` when tolerance changes or before compare.
 - Use `POST /audio/inspect` after each file selection.
 - Use `POST /compare` when user clicks Compare.
-- Use `POST /session/clear` when user clicks Clear or after an error popup is dismissed.
+- Use `POST /session/clear` when user clicks Clear; after an error popup is dismissed, reset the UI and delete all local temporary files (calling clear is optional if the client already wipes session state and temp dirs).
 - Display progress locally while request is running.
 - Display structured error messages as modal popups.
-- After any error popup is dismissed, refresh/reset the UI and require the user to start from the beginning.
+- After any error popup is dismissed, refresh/reset the UI, delete temporary files, and require the user to start from the beginning.
