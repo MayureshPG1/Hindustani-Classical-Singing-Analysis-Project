@@ -165,8 +165,8 @@ Recommended MVP support:
 
 Initial assumptions:
 
-- Maximum audio length: 2 minutes per file for MVP.
-- Recommended recording length: 10 seconds to 2 minutes.
+- Maximum audio length: 5 minutes per file for MVP.
+- Recommended recording length: 10 seconds to 5 minutes.
 - Mono and stereo files should both be accepted.
 - Files should be converted internally to mono for analysis.
 - Sample rate should be normalized internally, likely to 22050 Hz or 44100 Hz.
@@ -183,7 +183,7 @@ The app should detect and show clear errors for:
 - No vocals detected.
 - No sufficiently similar pitch-contour pattern between guru and disciple recordings.
 
-Guru and disciple clips may have different durations as long as each file is 2 minutes or shorter. Different durations should not block comparison by themselves.
+Guru and disciple clips may have different durations as long as each file is 5 minutes or shorter. Different durations should not block comparison by themselves.
 
 ## 9. Audio Analysis Requirements
 
@@ -585,7 +585,7 @@ Acceptance criteria:
 
 - Compare button is disabled until both files are loaded.
 - The current tolerance value is sent with the comparison request.
-- Guru and disciple files may have different durations if each file is 2 minutes or shorter.
+- Guru and disciple files may have different durations if each file is 5 minutes or shorter.
 - Clicking Compare starts local analysis.
 - App shows progress during analysis.
 - App handles processing errors without crashing.
@@ -664,7 +664,7 @@ The app shall compare recordings of different durations when they contain simila
 
 Acceptance criteria:
 
-- Each uploaded file may be up to 2 minutes long.
+- Each uploaded file may be up to 5 minutes long.
 - The two files do not need to have the same duration.
 - Backend processes both full files.
 - Backend finds similar portions between guru and disciple recordings.
@@ -689,8 +689,8 @@ Acceptance criteria:
 
 ### Performance
 
-- Audio files up to 2 minutes should process within a reasonable time on a typical laptop.
-- For MVP, target comparison completion within 30 seconds for recordings under 2 minutes.
+- Audio files up to 5 minutes should process within a reasonable time on a typical laptop.
+- For MVP, target comparison completion within a reasonable time for recordings up to 5 minutes.
 
 ### Reliability
 
@@ -958,7 +958,7 @@ Mitigation:
 3. The app normalizes both recordings relative to detected Sa before comparison.
 4. Sa is auto-detected first.
 5. Exercise type does not affect MVP analysis because the app is doing frequency and pitch-contour analysis.
-6. Maximum recording length for MVP is 2 minutes per file.
+6. Maximum recording length for MVP is 5 minutes per file.
 7. Windows is the first target operating system.
 8. Graph uses Indian swara labels.
 9. MVP uses file upload only.

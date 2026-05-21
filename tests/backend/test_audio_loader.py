@@ -36,11 +36,11 @@ def test_rejects_unsupported_extension(tmp_path: Path) -> None:
 
 
 def test_rejects_file_too_long(tmp_path: Path) -> None:
-    path = write_wav(tmp_path / "long.wav", duration_seconds=121.0, sample_rate=22050)
+    path = write_wav(tmp_path / "long.wav", duration_seconds=301.0, sample_rate=22050)
     with pytest.raises(HcsaError) as exc_info:
         load_and_validate(path, role="guru", file_name="long.wav")
     assert exc_info.value.error_code == "file_too_long"
-    assert exc_info.value.details["max_duration_seconds"] == 120
+    assert exc_info.value.details["max_duration_seconds"] == 300
 
 
 def test_stereo_converted_to_mono(tmp_path: Path) -> None:

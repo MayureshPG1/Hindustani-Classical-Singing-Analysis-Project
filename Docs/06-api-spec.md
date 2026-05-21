@@ -72,10 +72,10 @@ Error response:
 ```json
 {
   "error_code": "file_too_long",
-  "message": "Audio file must be 2 minutes or shorter.",
+  "message": "Audio file must be 5 minutes or shorter.",
   "details": {
-    "duration_seconds": 151.2,
-    "max_duration_seconds": 120
+    "duration_seconds": 301.2,
+    "max_duration_seconds": 300
   }
 }
 ```
@@ -220,7 +220,7 @@ Success response shape:
 
 Comparison behavior:
 
-- Guru and disciple files may have different durations as long as each file is 2 minutes or shorter.
+- Guru and disciple files may have different durations as long as each file is 5 minutes or shorter.
 - Supported formats: WAV and MP3 only.
 - Backend must find similar pitch-contour portions and compare those portions (see [`07-architecture.md`](07-architecture.md) for algorithm parameters).
 - DTW runs only inside each `MatchedSegment`, not on full-file contours.
@@ -293,7 +293,7 @@ Response:
 | Code | Meaning |
 | --- | --- |
 | `unsupported_file_type` | File extension or decoded format is unsupported. |
-| `file_too_long` | File duration exceeds 120 seconds. |
+| `file_too_long` | File duration exceeds 300 seconds (5 minutes). |
 | `no_audio_detected` | Decoded file contains no usable audio data. |
 | `decode_failed` | Backend could not decode audio. |
 | `no_vocals_detected` | Audio exists, but no usable vocal pitch pattern was found (includes cases where pitch extraction is too sparse). |
@@ -304,7 +304,7 @@ Response:
 
 ## Frontend API Client Behavior
 
-- Run basic client-side file validation before `POST /audio/inspect` (extension `.wav`/`.mp3`, file exists, size > 0, duration ≤ 120 s when metadata is available).
+- Run basic client-side file validation before `POST /audio/inspect` (extension `.wav`/`.mp3`, file exists, size > 0, duration ≤ 300 s when metadata is available).
 - Start backend process if needed on port **8765**.
 - Poll `GET /health` until backend is ready.
 - Use `GET /settings/tolerance` on startup to initialize tolerance UI.

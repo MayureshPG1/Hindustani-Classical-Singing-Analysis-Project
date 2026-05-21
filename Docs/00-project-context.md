@@ -50,7 +50,7 @@ Product defaults and analysis thresholds are also summarized in `07-architecture
 - The UI must be a single page.
 - The full uploaded audio timeline must be preserved.
 - The app must not trim leading silence, trailing silence, long endings, or non-vocal silent sections.
-- Guru and disciple clips may have different durations as long as each file is 2 minutes or shorter.
+- Guru and disciple clips may have different durations as long as each file is 5 minutes or shorter.
 - The backend must find similar portions between the two recordings and compare only those portions.
 - Non-similar additional portions from either uploaded audio must be left out of comparison and scoring.
 - Guru and disciple may sing in different scales.
@@ -78,7 +78,7 @@ Product defaults and analysis thresholds are also summarized in `07-architecture
 
 ## Default Settings
 
-- Maximum audio length: 2 minutes per file.
+- Maximum audio length: 5 minutes per file.
 - Clip durations may differ.
 - Supported upload formats: WAV and MP3 only (M4A out of scope for MVP).
 - Tolerance default: 0 cents.

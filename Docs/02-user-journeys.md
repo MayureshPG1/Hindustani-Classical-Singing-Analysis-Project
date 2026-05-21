@@ -19,7 +19,7 @@ Preconditions:
 - App is installed and opens locally on Windows.
 - Guru audio file exists on the user's machine.
 - Disciple audio file exists on the user's machine.
-- Both files are supported formats and under 2 minutes.
+- Both files are supported formats and under 5 minutes.
 
 Flow:
 
@@ -57,7 +57,7 @@ Goal: User compares two recordings where one clip contains extra material before
 Flow:
 
 1. User uploads guru and disciple files.
-2. Each file is 2 minutes or shorter, but the durations are different.
+2. Each file is 5 minutes or shorter, but the durations are different.
 3. One recording may contain extra silence, setup time, repeated notes, or an additional phrase not present in the other recording.
 4. User clicks `Compare`.
 5. Backend processes both full files.
@@ -122,7 +122,7 @@ Expected error examples:
 
 - Unsupported file type.
 - File is unreadable.
-- File duration is longer than 2 minutes.
+- File duration is longer than 5 minutes.
 - No detectable vocal pitch.
 
 Recovery:

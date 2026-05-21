@@ -47,7 +47,7 @@ Validation rules:
 
 - File must be readable.
 - File type must be supported.
-- Duration must be less than or equal to 2 minutes.
+- Duration must be less than or equal to 5 minutes.
 - File must contain audio data.
 - Audio must contain at least some detectable vocal pitch.
 
@@ -56,7 +56,7 @@ Supported MVP formats:
 - WAV
 - MP3
 
-The frontend shall perform basic client-side validation before calling the API (extension whitelist, file exists, size > 0, duration ≤ 120 s when metadata is available locally).
+The frontend shall perform basic client-side validation before calling the API (extension whitelist, file exists, size > 0, duration ≤ 300 s when metadata is available locally).
 
 ### FS-5: Configure Tolerance
 
@@ -146,7 +146,7 @@ Acceptance criteria:
 
 ### FS-12: Match Similar Portions Across Different Durations
 
-The backend shall handle recordings of different durations, as long as each file is 2 minutes or shorter.
+The backend shall handle recordings of different durations, as long as each file is 5 minutes or shorter.
 
 Acceptance criteria:
 

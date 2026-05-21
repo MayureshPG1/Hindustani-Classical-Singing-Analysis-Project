@@ -48,12 +48,13 @@ def test_inspect_unsupported_type(client: TestClient, tmp_path: Path) -> None:
 
 
 def test_inspect_file_too_long(client: TestClient, tmp_path: Path) -> None:
-    wav = write_wav(tmp_path / "long.wav", duration_seconds=121.0, sample_rate=22050)
+    wav = write_wav(tmp_path / "long.wav", duration_seconds=301.0, sample_rate=22050)
     response = _inspect(client, wav)
     assert response.status_code == 400
     body = response.json()
     assert body["error_code"] == "file_too_long"
-    assert body["message"] == "Audio file must be 2 minutes or shorter."
+    assert body["message"] == "Audio file must be 5 minutes or shorter."
+    assert body["details"]["max_duration_seconds"] == 300
 
 
 def test_inspect_no_audio_detected(client: TestClient, tmp_path: Path) -> None:

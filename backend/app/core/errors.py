@@ -15,7 +15,7 @@ INVALID_TOLERANCE_MESSAGE = (
     "Tolerance must be numeric and within the allowed range."
 )
 UNSUPPORTED_FILE_TYPE_MESSAGE = "File type is not supported. Use WAV or MP3 only."
-FILE_TOO_LONG_MESSAGE = "Audio file must be 2 minutes or shorter."
+FILE_TOO_LONG_MESSAGE = "Audio file must be 5 minutes or shorter."
 NO_AUDIO_DETECTED_MESSAGE = "No usable audio was detected in this file."
 DECODE_FAILED_MESSAGE = "The audio file could not be decoded."
 

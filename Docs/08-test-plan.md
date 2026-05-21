@@ -38,7 +38,7 @@ Test cases:
 - Resamples to 22050 Hz.
 - Preserves leading silence.
 - Preserves trailing silence.
-- Rejects files longer than 2 minutes.
+- Rejects files longer than 5 minutes.
 - Rejects unreadable file.
 
 ### Pitch Extractor
@@ -179,9 +179,9 @@ Expected:
 
 Targets:
 
-- Files under 2 minutes process in 30 seconds or less on a typical laptop.
+- Files up to 5 minutes process within a reasonable time on a typical laptop.
 - UI remains responsive during processing.
-- Backend does not exceed reasonable memory usage for two 2-minute mono files.
+- Backend does not exceed reasonable memory usage for two 5-minute mono files.
 
 ## Manual QA Checklist
 
@@ -194,7 +194,7 @@ Targets:
 - Verify swara labels render.
 - Verify metrics render.
 - Try invalid file.
-- Try file longer than 2 minutes.
+- Try file longer than 5 minutes.
 - Try empty/no-audio file.
 - Try audio with no vocals.
 - Try two files with no matching pattern.
