@@ -1,0 +1,13 @@
+---
+alwaysApply: true
+---
+
+# Project Rules
+
+- Always read `/docs/10-cursor-build-brief.md` before major changes.
+- Follow `/docs/09-implementation-plan.md`.
+- Do not add features that are not in the spec.
+- Keep components small and reusable.
+- Use the architecture in `/docs/07-architecture.md`.
+- Add or update tests when behavior changes.
+- Ask for clarification when requirements conflict.
