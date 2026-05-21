@@ -6,7 +6,7 @@ import numpy as np
 import librosa
 
 from backend.app.core import config
-from backend.app.models.comparison import PitchFrame
+from backend.app.models.pitch import PitchFrame
 
 
 def _classify_frame(
@@ -41,7 +41,6 @@ def extract_pitch(
     Extract F0 with librosa.pyin over the full waveform timeline.
 
     Preserves every analysis frame (including silence); does not trim.
-    Swara/Sa fields are left unset until later pipeline stages.
     """
     sr = sample_rate or config.SR
     if waveform.size == 0:

@@ -1,38 +1,26 @@
-"""Settings, session, compare, and swara routes."""
+"""Session and compare routes."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from pathlib import Path
 
-from backend.app.core.errors import validate_tolerance_cents
+from fastapi import APIRouter, Depends, File, Request, UploadFile
+
+from backend.app.core.errors import raise_decode_failed, raise_unsupported_file_type
 from backend.app.core.session import SessionManager
-from backend.app.models.comparison import (
-    ClearSessionResponse,
-    ToleranceSettings,
-    ToleranceUpdateRequest,
+from backend.app.models.comparison import ClearSessionResponse, ComparisonResult
+from backend.app.services.audio_loader import (
+    is_supported_file_name,
+    make_file_id,
+    normalize_extension,
 )
-from backend.app.models.swara import Swara, SwaraMapResponse
-from shared.constants import SWARA_TABLE
+from backend.app.services.compare_service import compare_audio_files
 
-router = APIRouter(tags=["settings"])
+router = APIRouter(tags=["compare"])
 
 
 def get_session(request: Request) -> SessionManager:
     return request.app.state.session_manager
-
-
-@router.get("/settings/tolerance", response_model=ToleranceSettings)
-def get_tolerance(session: SessionManager = Depends(get_session)) -> ToleranceSettings:
-    return session.get_tolerance_settings()
-
-
-@router.put("/settings/tolerance", response_model=ToleranceSettings)
-def set_tolerance(
-    body: ToleranceUpdateRequest,
-    session: SessionManager = Depends(get_session),
-) -> ToleranceSettings:
-    cents = validate_tolerance_cents(body.tolerance_cents)
-    return session.set_tolerance_cents(cents)
 
 
 @router.post("/session/clear", response_model=ClearSessionResponse)
@@ -41,7 +29,48 @@ def clear_session(session: SessionManager = Depends(get_session)) -> ClearSessio
     return ClearSessionResponse()
 
 
-@router.get("/swara-map", response_model=SwaraMapResponse)
-def swara_map() -> SwaraMapResponse:
-    items = [Swara(**entry) for entry in SWARA_TABLE]
-    return SwaraMapResponse(items=items)
+@router.post("/compare", response_model=ComparisonResult)
+async def compare_recordings(
+    guru_file: UploadFile = File(...),
+    disciple_file: UploadFile = File(...),
+    session: SessionManager = Depends(get_session),
+) -> ComparisonResult:
+    guru_name = guru_file.filename or "guru"
+    disciple_name = disciple_file.filename or "disciple"
+
+    for file_name in (guru_name, disciple_name):
+        if not is_supported_file_name(file_name):
+            raise_unsupported_file_type(file_name)
+
+    guru_id = make_file_id("guru")
+    disciple_id = make_file_id("disciple")
+    guru_dest = session.temp_root / f"{guru_id}{normalize_extension(guru_name)}"
+    disciple_dest = session.temp_root / f"{disciple_id}{normalize_extension(disciple_name)}"
+
+    guru_bytes = await guru_file.read()
+    disciple_bytes = await disciple_file.read()
+    if not guru_bytes:
+        raise_decode_failed(guru_name, "empty upload")
+    if not disciple_bytes:
+        raise_decode_failed(disciple_name, "empty upload")
+
+    guru_dest.write_bytes(guru_bytes)
+    disciple_dest.write_bytes(disciple_bytes)
+
+    session.processing_status = "loading_audio"
+    try:
+        result = compare_audio_files(
+            guru_dest,
+            guru_file_name=guru_name,
+            guru_file_id=guru_id,
+            disciple_path=disciple_dest,
+            disciple_file_name=disciple_name,
+            disciple_file_id=disciple_id,
+        )
+    finally:
+        session.processing_status = "idle"
+
+    session.set_role_file("guru", result.guru_file_info.file_id, guru_dest)
+    session.set_role_file("disciple", result.disciple_file_info.file_id, disciple_dest)
+    session.cached_comparison = result
+    return result

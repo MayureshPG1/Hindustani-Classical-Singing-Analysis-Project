@@ -47,22 +47,50 @@ Fields:
 - `validation_status`: `ValidationStatus`.
 - `error_message`: optional string.
 
+## PitchMetadata
+
+Pitch summary for `POST /audio/inspect`. Includes full-file stats plus a short preview only.
+
+Fields:
+
+- `voiced_frame_count`: integer (full timeline).
+- `total_frame_count`: integer (full timeline).
+- `voiced_fraction`: float (full timeline).
+- `preview_frames`: list of `PitchFrame`, **first 5 frames only** (not the full series).
+
+## AudioInspectResponse
+
+Response for `POST /audio/inspect`.
+
+Fields:
+
+- `file_info`: `AudioFileInfo`.
+- `pitch_metadata`: `PitchMetadata`.
+
 Example:
 
 ```json
 {
-  "file_id": "guru-001",
-  "file_name": "guru.wav",
-  "duration_seconds": 42.5,
-  "sample_rate": 44100,
-  "channels": 1,
-  "format": "wav",
-  "validation_status": "valid",
-  "error_message": null
+  "file_info": {
+    "file_id": "guru-001",
+    "file_name": "guru.wav",
+    "duration_seconds": 42.5,
+    "sample_rate": 44100,
+    "channels": 1,
+    "format": "wav",
+    "validation_status": "valid",
+    "error_message": null
+  },
+  "pitch_metadata": {
+    "voiced_frame_count": 1200,
+    "total_frame_count": 1500,
+    "voiced_fraction": 0.8,
+    "preview_frames": []
+  }
 }
 ```
 
-## PitchFrame
+## PitchFrame (`models/pitch.py`)
 
 Represents pitch analysis for one time frame from one recording.
 
@@ -98,9 +126,9 @@ Example unvoiced frame:
 }
 ```
 
-## PitchSummary (optional)
+## PitchSummary (`models/pitch.py`)
 
-Lightweight per-file stats for optional UI summary (not required on API if computed client-side).
+Lightweight per-file stats. Used in compare response and embedded in inspect `pitch_metadata` counts.
 
 Fields:
 

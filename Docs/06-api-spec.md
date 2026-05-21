@@ -44,7 +44,7 @@ POST /audio/inspect
 
 Purpose:
 
-Validate one uploaded audio file and return metadata.
+Validate one uploaded audio file, run pitch extraction for vocal checks, and return file metadata plus a short pitch preview (not the full timeline).
 
 Request:
 
@@ -56,16 +56,39 @@ Success response:
 
 ```json
 {
-  "file_id": "guru-001",
-  "file_name": "guru.wav",
-  "duration_seconds": 42.5,
-  "sample_rate": 44100,
-  "channels": 1,
-  "format": "wav",
-  "validation_status": "valid",
-  "error_message": null
+  "file_info": {
+    "file_id": "guru-001",
+    "file_name": "guru.wav",
+    "duration_seconds": 42.5,
+    "sample_rate": 44100,
+    "channels": 1,
+    "format": "wav",
+    "validation_status": "valid",
+    "error_message": null
+  },
+  "pitch_metadata": {
+    "voiced_frame_count": 1200,
+    "total_frame_count": 1500,
+    "voiced_fraction": 0.8,
+    "preview_frames": [
+      {
+        "time_seconds": 0.0,
+        "frequency_hz": 245.2,
+        "confidence": 0.91,
+        "voiced": true,
+        "silent_or_unvoiced": false
+      }
+    ]
+  }
 }
 ```
+
+Inspect behavior:
+
+- `preview_frames` contains only the **first 5** frames (`INSPECT_PITCH_PREVIEW_FRAMES` in `config.py`).
+- `voiced_frame_count`, `total_frame_count`, and `voiced_fraction` describe the **full** extracted timeline (used for validation).
+- Full `PitchFrame` lists are returned only from `POST /compare`.
+- Returns `no_vocals_detected` when pitch is too sparse (same thresholds as compare).
 
 Error response:
 

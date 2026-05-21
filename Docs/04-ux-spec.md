@@ -56,7 +56,7 @@ Behavior:
 - Opens file picker.
 - Accepts WAV and MP3 only.
 - Runs client-side checks (extension, readable file, size > 0, duration ≤ 300 s when available) before calling the API.
-- Updates guru file status after `POST /audio/inspect`.
+- Updates guru file status from `POST /audio/inspect` (`file_info`; optional pitch preview for debug).
 - Shows validation errors as popups and resets UI after dismissal.
 
 ### Upload Disciple Voice
@@ -66,7 +66,7 @@ Behavior:
 - Opens file picker.
 - Accepts WAV and MP3 only.
 - Runs client-side checks before calling the API.
-- Updates disciple file status after `POST /audio/inspect`.
+- Updates disciple file status from `POST /audio/inspect` (`file_info`; optional pitch preview).
 - Shows validation errors as popups and resets UI after dismissal.
 
 ### Compare

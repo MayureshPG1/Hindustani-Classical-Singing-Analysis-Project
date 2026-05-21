@@ -2,22 +2,15 @@
 
 from __future__ import annotations
 
-import math
-from typing import Any
+from shared.constants import MAX_AUDIO_DURATION_SECONDS
 
-from shared.constants import (
-    MAX_AUDIO_DURATION_SECONDS,
-    MAX_TOLERANCE_CENTS,
-    MIN_TOLERANCE_CENTS,
-)
-
-INVALID_TOLERANCE_MESSAGE = (
-    "Tolerance must be numeric and within the allowed range."
-)
 UNSUPPORTED_FILE_TYPE_MESSAGE = "File type is not supported. Use WAV or MP3 only."
 FILE_TOO_LONG_MESSAGE = "Audio file must be 5 minutes or shorter."
 NO_AUDIO_DETECTED_MESSAGE = "No usable audio was detected in this file."
 DECODE_FAILED_MESSAGE = "The audio file could not be decoded."
+NO_VOCALS_DETECTED_MESSAGE = (
+    "No reliable vocal pitch was detected. Try a clearer vocal recording."
+)
 
 
 class HcsaError(Exception):
@@ -28,30 +21,6 @@ class HcsaError(Exception):
         self.message = message
         self.details = details or {}
         super().__init__(message)
-
-
-def validate_tolerance_cents(value: Any) -> float:
-    """Validate tolerance for PUT /settings/tolerance."""
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise HcsaError(
-            "invalid_tolerance",
-            INVALID_TOLERANCE_MESSAGE,
-            {"tolerance_cents": value},
-        )
-    numeric = float(value)
-    if not math.isfinite(numeric):
-        raise HcsaError(
-            "invalid_tolerance",
-            INVALID_TOLERANCE_MESSAGE,
-            {"tolerance_cents": value},
-        )
-    if numeric < MIN_TOLERANCE_CENTS or numeric > MAX_TOLERANCE_CENTS:
-        raise HcsaError(
-            "invalid_tolerance",
-            INVALID_TOLERANCE_MESSAGE,
-            {"tolerance_cents": value},
-        )
-    return numeric
 
 
 def raise_unsupported_file_type(file_name: str) -> None:
@@ -82,3 +51,13 @@ def raise_decode_failed(file_name: str, reason: str | None = None) -> None:
     if reason:
         details["reason"] = reason
     raise HcsaError("decode_failed", DECODE_FAILED_MESSAGE, details)
+
+
+def raise_no_vocals_detected(*, role: str, summary: object | None = None) -> None:
+    details: dict[str, object] = {"role": role}
+    if summary is not None:
+        if hasattr(summary, "model_dump"):
+            details["pitch_summary"] = summary.model_dump()
+        else:
+            details["pitch_summary"] = summary
+    raise HcsaError("no_vocals_detected", NO_VOCALS_DETECTED_MESSAGE, details)

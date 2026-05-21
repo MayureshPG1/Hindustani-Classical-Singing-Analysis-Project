@@ -44,12 +44,13 @@ Tasks:
 - Implement audio loader with `librosa.load`.
 - Validate duration.
 - Preserve full timeline.
-- Return `AudioFileInfo`.
-- Implement `/api/v1/audio/inspect`.
+- Implement `/api/v1/audio/inspect` returning `AudioInspectResponse` (`file_info` + `pitch_metadata` with 5 preview frames).
+- Add `inspect_service.py`.
 
 Deliverables:
 
-- Valid audio metadata returned.
+- Valid audio metadata and pitch preview returned.
+- `no_vocals_detected` on inspect when pitch is too sparse.
 - Invalid files produce structured errors.
 - Tests cover WAV and generated fixtures.
 

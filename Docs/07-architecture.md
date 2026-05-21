@@ -79,6 +79,7 @@ backend/
     services/
       audio_loader.py
       pitch_extractor.py
+      inspect_service.py
       compare_service.py
     core/
       config.py
@@ -134,10 +135,16 @@ Legacy modules (`sa_detector`, `swara_mapper`, `matched_portion_finder`, `aligne
 | `VOICED_PROB_SILENT_MAX` | 0.35 | Treat as silent/unvoiced |
 | `MIN_VOICED_FRAMES_TOTAL` | 30 | Below → `no_vocals_detected` |
 | `MIN_VOICED_FRACTION` | 0.05 | Below → `no_vocals_detected` |
+| `INSPECT_PITCH_PREVIEW_FRAMES` | 5 | Frames in inspect `preview_frames` |
 
 Use `no_vocals_detected` only (do not expose `no_pitch_detected`).
 
 Sa-specific constants (`VOICED_PROB_SA_MIN`, `SA_*`) are not used in minimal MVP.
+
+## Inspect vs Compare
+
+- **Inspect:** load → pyin (full timeline for stats) → `AudioInspectResponse` with `file_info` and `pitch_metadata` (**5** preview frames only).
+- **Compare:** load both files → pyin → full `guru_pitch_frames` and `disciple_pitch_frames`.
 
 ## Graph Rendering Strategy
 

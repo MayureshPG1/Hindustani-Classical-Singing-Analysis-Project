@@ -16,17 +16,13 @@ BACKEND_MODULES = [
     "backend.app.api.routes_audio",
     "backend.app.api.routes_compare",
     "backend.app.models.audio",
+    "backend.app.models.pitch",
     "backend.app.models.comparison",
     "backend.app.models.errors",
-    "backend.app.models.swara",
     "backend.app.services.audio_loader",
     "backend.app.services.pitch_extractor",
-    "backend.app.services.sa_detector",
-    "backend.app.services.swara_mapper",
-    "backend.app.services.matched_portion_finder",
-    "backend.app.services.aligner",
-    "backend.app.services.scorer",
-    "backend.app.services.comparator",
+    "backend.app.services.compare_service",
+    "backend.app.services.inspect_service",
 ]
 
 FRONTEND_MODULES = [
@@ -55,17 +51,10 @@ def test_frontend_module_imports(module_name: str) -> None:
 
 
 def test_shared_constants() -> None:
-    from shared.constants import (
-        API_BASE_URL,
-        DEFAULT_TOLERANCE_CENTS,
-        MAX_TOLERANCE_CENTS,
-        SWARA_TABLE,
-    )
+    from shared.constants import API_BASE_URL, MAX_AUDIO_DURATION_SECONDS
 
     assert API_BASE_URL == "http://127.0.0.1:8765/api/v1"
-    assert DEFAULT_TOLERANCE_CENTS == 0.0
-    assert MAX_TOLERANCE_CENTS == 25.0
-    assert len(SWARA_TABLE) == 12
+    assert MAX_AUDIO_DURATION_SECONDS == 300
 
 
 def test_backend_config_matches_architecture() -> None:
@@ -74,7 +63,7 @@ def test_backend_config_matches_architecture() -> None:
     assert config.SR == 22050
     assert config.HOP_LENGTH == 220
     assert config.VOICED_PROB_PLOT_MIN == 0.55
-    assert config.MIN_WINDOW_SECONDS == 1.0
+    assert config.MIN_VOICED_FRAMES_TOTAL == 30
 
 
 def test_fastapi_app_factory() -> None:

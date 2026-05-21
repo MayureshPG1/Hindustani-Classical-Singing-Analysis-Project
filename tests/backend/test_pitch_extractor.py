@@ -9,7 +9,7 @@ import pytest
 
 from backend.app.core import config
 from backend.app.core.errors import HcsaError
-from backend.app.models.comparison import PitchFrame
+from backend.app.models.pitch import PitchFrame
 from backend.app.services.audio_loader import load_and_validate
 from backend.app.services.pitch_extractor import extract_pitch
 from tests.fixtures.audio_factory import write_silence_wav, write_wav

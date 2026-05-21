@@ -39,9 +39,9 @@ Acceptance criteria:
 - File name, duration, format, and validation state are shown.
 - Invalid files produce a clear error popup and reset the UI after dismissal.
 
-### FS-4: Validate Audio Files
+### FS-4: Validate Audio Files (Inspect)
 
-The app shall validate uploaded files before comparison.
+The app shall validate uploaded files via `POST /audio/inspect` before comparison.
 
 Validation rules:
 
@@ -49,7 +49,12 @@ Validation rules:
 - File type must be supported.
 - Duration must be less than or equal to 5 minutes.
 - File must contain audio data.
-- Audio must contain at least some detectable vocal pitch.
+- Audio must contain at least some detectable vocal pitch (`no_vocals_detected` if not).
+
+Inspect response:
+
+- `file_info`: `AudioFileInfo`.
+- `pitch_metadata`: full-file voiced stats plus `preview_frames` (first **5** frames only).
 
 Supported MVP formats:
 

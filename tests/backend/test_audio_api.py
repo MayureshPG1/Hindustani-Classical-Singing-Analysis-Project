@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.app.core import config
 from backend.app.main import create_app
 from tests.fixtures.audio_factory import write_silence_wav, write_wav
 
@@ -26,17 +27,30 @@ def _inspect(client: TestClient, path: Path, role: str = "guru"):
         )
 
 
-def test_inspect_valid_wav_returns_metadata(client: TestClient, tmp_path: Path) -> None:
+def test_inspect_valid_wav_returns_metadata_and_pitch_preview(
+    client: TestClient, tmp_path: Path
+) -> None:
     wav = write_wav(tmp_path / "guru.wav", duration_seconds=1.5, sample_rate=44100)
     response = _inspect(client, wav, role="guru")
     assert response.status_code == 200
     data = response.json()
-    assert data["validation_status"] == "valid"
-    assert data["file_name"] == "guru.wav"
-    assert data["format"] == "wav"
-    assert data["file_id"].startswith("guru-")
-    assert data["error_message"] is None
-    assert 1.0 <= data["duration_seconds"] <= 1.6
+
+    file_info = data["file_info"]
+    assert file_info["validation_status"] == "valid"
+    assert file_info["file_name"] == "guru.wav"
+    assert file_info["format"] == "wav"
+    assert file_info["file_id"].startswith("guru-")
+    assert file_info["error_message"] is None
+    assert 1.0 <= file_info["duration_seconds"] <= 1.6
+
+    pitch = data["pitch_metadata"]
+    assert pitch["total_frame_count"] > config.INSPECT_PITCH_PREVIEW_FRAMES
+    assert pitch["voiced_frame_count"] > 0
+    assert pitch["voiced_fraction"] > 0.0
+    assert len(pitch["preview_frames"]) == config.INSPECT_PITCH_PREVIEW_FRAMES
+    assert pitch["preview_frames"][0]["time_seconds"] >= 0.0
+    voiced = [f for f in pitch["preview_frames"] if f["voiced"] and f["frequency_hz"]]
+    assert voiced
 
 
 def test_inspect_unsupported_type(client: TestClient, tmp_path: Path) -> None:
@@ -64,6 +78,13 @@ def test_inspect_no_audio_detected(client: TestClient, tmp_path: Path) -> None:
     assert response.json()["error_code"] == "no_audio_detected"
 
 
+def test_inspect_no_vocals_detected(client: TestClient, tmp_path: Path) -> None:
+    wav = write_wav(tmp_path / "low.wav", duration_seconds=0.4, frequency_hz=30.0)
+    response = _inspect(client, wav)
+    assert response.status_code == 400
+    assert response.json()["error_code"] == "no_vocals_detected"
+
+
 def test_inspect_decode_failed(client: TestClient, tmp_path: Path) -> None:
     corrupt = tmp_path / "bad.wav"
     corrupt.write_bytes(b"RIFF????")
@@ -76,7 +97,7 @@ def test_inspect_registers_file_in_session(client: TestClient, tmp_path: Path) -
     wav = write_wav(tmp_path / "disciple.wav", duration_seconds=0.4)
     response = _inspect(client, wav, role="disciple")
     assert response.status_code == 200
-    file_id = response.json()["file_id"]
+    file_id = response.json()["file_info"]["file_id"]
 
     session = client.app.state.session_manager
     assert file_id in session.file_refs

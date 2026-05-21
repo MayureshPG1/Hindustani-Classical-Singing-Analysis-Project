@@ -85,7 +85,7 @@ Testing:
 
 1. Upload guru audio (WAV/MP3).
 2. Upload disciple audio (WAV/MP3).
-3. Client-side then API validation for both files.
+3. Client-side then API validation for both files (`inspect` returns `file_info` + 5-frame pitch preview).
 4. Compare files through local FastAPI backend at `http://127.0.0.1:8765/api/v1`.
 5. Extract pitch using `librosa.pyin` with thresholds in `07-architecture.md`.
 6. Return `guru_pitch_frames` and `disciple_pitch_frames` from `POST /compare`.
