@@ -11,8 +11,8 @@ from backend.app.models.comparison import (
     ToleranceSettings,
     ToleranceUpdateRequest,
 )
-from backend.app.models.swara import Swara, SwaraMapResponse
-from shared.constants import SWARA_TABLE
+from backend.app.models.swara import SwaraMapResponse
+from backend.app.services.swara_mapper import get_swara_table
 
 router = APIRouter(tags=["settings"])
 
@@ -43,5 +43,4 @@ def clear_session(session: SessionManager = Depends(get_session)) -> ClearSessio
 
 @router.get("/swara-map", response_model=SwaraMapResponse)
 def swara_map() -> SwaraMapResponse:
-    items = [Swara(**entry) for entry in SWARA_TABLE]
-    return SwaraMapResponse(items=items)
+    return SwaraMapResponse(items=get_swara_table())

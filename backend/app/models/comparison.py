@@ -111,6 +111,21 @@ class PitchFrame(BaseModel):
     swara_f0_hz: float | None = None
 
 
+class SaDetectionMetadata(BaseModel):
+    """Detected Sa (tonic) for one recording."""
+
+    sa_hz: float
+    confidence: float
+
+
+class AudioInspectResponse(BaseModel):
+    """Response for POST /audio/inspect."""
+
+    file_info: AudioFileInfo
+    sa: SaDetectionMetadata
+    pitch_frames: list[PitchFrame] = Field(default_factory=list)
+
+
 class ComparisonFrame(BaseModel):
     """One aligned comparison point."""
 

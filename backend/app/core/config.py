@@ -10,10 +10,14 @@ from shared.constants import (
 
 # librosa.pyin
 SR = 22050
-HOP_LENGTH = 220
+# Larger hop = fewer frames and faster pyin (~46 ms per frame at 22050 Hz).
+HOP_LENGTH = 1024
 FRAME_LENGTH = 2048
 FMIN_HZ = 50.0
 FMAX_HZ = 1000.0
+
+# Inspect API returns a short preview of pitch frames (full list on compare).
+INSPECT_PITCH_FRAME_PREVIEW_COUNT = 5
 
 # Voiced / plot / compare
 VOICED_PROB_PLOT_MIN = 0.55
@@ -21,7 +25,8 @@ VOICED_PROB_SILENT_MAX = 0.35
 
 # Sa estimation
 VOICED_PROB_SA_MIN = 0.65
-SA_MIN_VOICED_FRAMES = 50
+# Lower than 50 so Sa still works with HOP_LENGTH=1024 on short clips (~40+ Sa frames).
+SA_MIN_VOICED_FRAMES = 30
 SA_MIN_VOICED_DURATION_SEC = 0.5
 SA_HISTOGRAM_MIN_PEAK_WEIGHT = 0.15
 

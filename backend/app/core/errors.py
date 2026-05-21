@@ -18,6 +18,10 @@ UNSUPPORTED_FILE_TYPE_MESSAGE = "File type is not supported. Use WAV or MP3 only
 FILE_TOO_LONG_MESSAGE = "Audio file must be 5 minutes or shorter."
 NO_AUDIO_DETECTED_MESSAGE = "No usable audio was detected in this file."
 DECODE_FAILED_MESSAGE = "The audio file could not be decoded."
+NO_VOCALS_DETECTED_MESSAGE = (
+    "No usable vocal pitch pattern was detected in this recording."
+)
+SA_DETECTION_FAILED_MESSAGE = "Sa could not be estimated reliably from this recording."
 
 
 class HcsaError(Exception):
@@ -82,3 +86,29 @@ def raise_decode_failed(file_name: str, reason: str | None = None) -> None:
     if reason:
         details["reason"] = reason
     raise HcsaError("decode_failed", DECODE_FAILED_MESSAGE, details)
+
+
+def raise_no_vocals_detected(
+    *,
+    voiced_frame_count: int,
+    total_frame_count: int,
+) -> None:
+    raise HcsaError(
+        "no_vocals_detected",
+        NO_VOCALS_DETECTED_MESSAGE,
+        {
+            "voiced_frame_count": voiced_frame_count,
+            "total_frame_count": total_frame_count,
+        },
+    )
+
+
+def raise_sa_detection_failed(
+    *,
+    sa_frame_count: int,
+    peak_weight_fraction: float | None = None,
+) -> None:
+    details: dict[str, int | float] = {"sa_frame_count": sa_frame_count}
+    if peak_weight_fraction is not None:
+        details["peak_weight_fraction"] = peak_weight_fraction
+    raise HcsaError("sa_detection_failed", SA_DETECTION_FAILED_MESSAGE, details)

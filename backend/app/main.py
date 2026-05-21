@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -36,10 +37,24 @@ def _error_response(exc: HcsaError, status_code: int = 400) -> JSONResponse:
 
 def create_app() -> FastAPI:
     """Build the FastAPI application."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        force=True,
+    )
+
     application = FastAPI(title="HCSA Backend", version=APP_VERSION, lifespan=lifespan)
 
     @application.exception_handler(HcsaError)
-    async def hcsa_error_handler(_request: Request, exc: HcsaError) -> JSONResponse:
+    async def hcsa_error_handler(request: Request, exc: HcsaError) -> JSONResponse:
+        logging.getLogger("hcsa.api").error(
+            "HcsaError on %s %s: code=%s message=%s details=%s",
+            request.method,
+            request.url.path,
+            exc.error_code,
+            exc.message,
+            exc.details,
+        )
         return _error_response(exc)
 
     @application.exception_handler(RequestValidationError)

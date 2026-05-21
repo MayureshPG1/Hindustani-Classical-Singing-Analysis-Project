@@ -1,0 +1,1 @@
+{"error_code":"no_vocals_detected","message":"No usable vocal pitch pattern was detected in this recording.","details":{"voiced_frame_count":131,"total_frame_count":6322}}

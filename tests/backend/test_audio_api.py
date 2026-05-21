@@ -26,17 +26,39 @@ def _inspect(client: TestClient, path: Path, role: str = "guru"):
         )
 
 
-def test_inspect_valid_wav_returns_metadata(client: TestClient, tmp_path: Path) -> None:
-    wav = write_wav(tmp_path / "guru.wav", duration_seconds=1.5, sample_rate=44100)
+def test_inspect_valid_wav_returns_metadata_pitch_and_sa(
+    client: TestClient, tmp_path: Path
+) -> None:
+    wav = write_wav(
+        tmp_path / "guru.wav",
+        duration_seconds=2.0,
+        sample_rate=44100,
+        frequency_hz=220.0,
+        amplitude=0.6,
+    )
     response = _inspect(client, wav, role="guru")
     assert response.status_code == 200
     data = response.json()
-    assert data["validation_status"] == "valid"
-    assert data["file_name"] == "guru.wav"
-    assert data["format"] == "wav"
-    assert data["file_id"].startswith("guru-")
-    assert data["error_message"] is None
-    assert 1.0 <= data["duration_seconds"] <= 1.6
+
+    file_info = data["file_info"]
+    assert file_info["validation_status"] == "valid"
+    assert file_info["file_name"] == "guru.wav"
+    assert file_info["format"] == "wav"
+    assert file_info["file_id"].startswith("guru-")
+    assert file_info["error_message"] is None
+    assert 1.9 <= file_info["duration_seconds"] <= 2.1
+
+    sa = data["sa"]
+    assert sa["sa_hz"] > 0
+    assert 0.0 < sa["confidence"] <= 1.0
+
+    pitch_frames = data["pitch_frames"]
+    assert len(pitch_frames) == 5
+    assert pitch_frames[0]["time_seconds"] >= 0.0
+    voiced = [frame for frame in pitch_frames if frame["voiced"]]
+    assert all(frame["sa_f0_hz"] == sa["sa_hz"] for frame in pitch_frames)
+    assert all(frame["cents_from_sa"] is not None for frame in voiced)
+    assert all(frame["swara_symbol"] for frame in voiced)
 
 
 def test_inspect_unsupported_type(client: TestClient, tmp_path: Path) -> None:
@@ -73,10 +95,16 @@ def test_inspect_decode_failed(client: TestClient, tmp_path: Path) -> None:
 
 
 def test_inspect_registers_file_in_session(client: TestClient, tmp_path: Path) -> None:
-    wav = write_wav(tmp_path / "disciple.wav", duration_seconds=0.4)
+    wav = write_wav(
+        tmp_path / "disciple.wav",
+        duration_seconds=2.0,
+        sample_rate=44100,
+        frequency_hz=330.0,
+        amplitude=0.6,
+    )
     response = _inspect(client, wav, role="disciple")
     assert response.status_code == 200
-    file_id = response.json()["file_id"]
+    file_id = response.json()["file_info"]["file_id"]
 
     session = client.app.state.session_manager
     assert file_id in session.file_refs
