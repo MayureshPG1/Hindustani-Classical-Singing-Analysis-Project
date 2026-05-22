@@ -7,15 +7,60 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QLabel, QStackedWidget, QVBoxLayout, QWidget
 
 from frontend.theme import COLOR_BG, COLOR_TEXT, COLOR_TEXT_MUTED, MUTED_LABEL_STYLE
+from shared.constants import (
+    PITCH_GRAPH_Y_MAX_HZ,
+    PITCH_GRAPH_Y_MIN_HZ,
+    SWARA_Y_AXIS_TICKS,
+)
 
 EMPTY_STATE_TEXT = "Upload guru and disciple audio to compare."
 
 # UX: guru = darker reference line; disciple = contrasting overlay on black background.
-GURU_PEN = pg.mkPen("#5a5a5a", width=2)
-DISCIPLE_PEN = pg.mkPen("#5b9bd5", width=2)
+DISCIPLE_LINE_WIDTH = 2
+GURU_LINE_WIDTH = DISCIPLE_LINE_WIDTH * 3
+GURU_PEN = pg.mkPen("#5a5a5a", width=GURU_LINE_WIDTH)
+DISCIPLE_PEN = pg.mkPen("#5b9bd5", width=DISCIPLE_LINE_WIDTH)
+
+SWARA_LABEL_FONT = QFont()
+SWARA_LABEL_FONT.setPointSize(7)
+
+
+def _configure_pitch_y_axis(plot_widget: pg.PlotWidget) -> None:
+    """Fixed linear Hz range; auto ticks drive evenly spaced grid lines."""
+    plot_widget.setLogMode(x=False, y=False)
+    plot_widget.setYRange(PITCH_GRAPH_Y_MIN_HZ, PITCH_GRAPH_Y_MAX_HZ, padding=0)
+    plot_widget.enableAutoRange(axis=pg.ViewBox.YAxis, enable=False)
+
+    y_span = PITCH_GRAPH_Y_MAX_HZ - PITCH_GRAPH_Y_MIN_HZ
+    view_box = plot_widget.getViewBox()
+    view_box.setLimits(
+        yMin=PITCH_GRAPH_Y_MIN_HZ,
+        yMax=PITCH_GRAPH_Y_MAX_HZ,
+        minYRange=y_span,
+        maxYRange=y_span,
+    )
+
+    left_axis = plot_widget.getAxis("left")
+    # Auto linear Hz ticks for grid; swara names are overlaid separately.
+    left_axis.setTicks(None)
+    left_axis.setStyle(showValues=False)
+
+
+def _add_swara_axis_labels(plot_widget: pg.PlotWidget) -> list[pg.TextItem]:
+    """Place swara names at true Hz on a linear Y axis (data coordinates)."""
+    labels: list[pg.TextItem] = []
+    for hz, name in SWARA_Y_AXIS_TICKS:
+        item = pg.TextItem(name, color=COLOR_TEXT_MUTED, anchor=(1.0, 0.5))
+        item.setFont(SWARA_LABEL_FONT)
+        item.setPos(0.0, hz)
+        item.setZValue(-5)
+        plot_widget.addItem(item)
+        labels.append(item)
+    return labels
 
 
 def pitch_frames_to_plot_arrays(
@@ -66,6 +111,9 @@ class ComparisonGraph(QWidget):
             axis.setPen(pg.mkPen(COLOR_TEXT_MUTED))
             axis.setTextPen(pg.mkPen(COLOR_TEXT))
 
+        _configure_pitch_y_axis(self._plot_widget)
+        self._swara_labels = _add_swara_axis_labels(self._plot_widget)
+
         self._guru_curve = self._plot_widget.plot(
             pen=GURU_PEN,
             name="Guru",
@@ -111,16 +159,12 @@ class ComparisonGraph(QWidget):
         if max_time > 0.0:
             self._plot_widget.setXRange(0.0, max_time * 1.02, padding=0.02)
 
-        voiced_hz: list[float] = []
-        for series in (guru_y, disciple_y):
-            valid = series[~np.isnan(series)]
-            if valid.size:
-                voiced_hz.extend(valid.tolist())
-        if voiced_hz:
-            y_min = max(50.0, min(voiced_hz) * 0.9)
-            y_max = min(1000.0, max(voiced_hz) * 1.1)
-            if y_max > y_min:
-                self._plot_widget.setYRange(y_min, y_max, padding=0.05)
+        self._plot_widget.setLogMode(x=False, y=False)
+        self._plot_widget.setYRange(
+            PITCH_GRAPH_Y_MIN_HZ,
+            PITCH_GRAPH_Y_MAX_HZ,
+            padding=0,
+        )
 
         self._stack.setCurrentWidget(self._plot_widget)
 
