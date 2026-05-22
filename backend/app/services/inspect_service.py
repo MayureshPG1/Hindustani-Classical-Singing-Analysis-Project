@@ -1,10 +1,9 @@
-"""Validate upload and return file info with pitch preview (first N frames)."""
+"""Validate upload and return file info with full-timeline pitch stats."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from backend.app.core import config
 from backend.app.core.request_log import log_event, log_step
 from backend.app.models.audio import AudioInspectResponse, PitchMetadata
 from backend.app.services.audio_loader import load_and_validate
@@ -22,10 +21,9 @@ def inspect_audio_file(
     file_id: str | None = None,
 ) -> AudioInspectResponse:
     """
-    Load audio, extract pitch for validation, return metadata and pitch preview.
+    Load audio, extract pitch for validation, return metadata and voiced stats.
 
-    The API returns only the first ``INSPECT_PITCH_PREVIEW_FRAMES`` frames;
-    the full timeline is produced on ``POST /compare``.
+    Full ``PitchFrame`` timelines are returned only from ``POST /compare``.
     """
     with log_step(ROUTE, "load_and_validate", path=str(path), role=role):
         loaded = load_and_validate(path, role=role, file_name=file_name, file_id=file_id)
@@ -41,15 +39,13 @@ def inspect_audio_file(
         ensure_sufficient_vocals(frames, role=role)
 
     summary = summarize_pitch(frames)
-    preview_count = config.INSPECT_PITCH_PREVIEW_FRAMES
-    preview = frames[:preview_count]
 
     log_event(
         ROUTE,
         "pitch summary",
         voiced_frame_count=summary.voiced_frame_count,
         total_frame_count=summary.total_frame_count,
-        preview_count=len(preview),
+        voiced_fraction=summary.voiced_fraction,
     )
 
     return AudioInspectResponse(
@@ -58,6 +54,5 @@ def inspect_audio_file(
             voiced_frame_count=summary.voiced_frame_count,
             total_frame_count=summary.total_frame_count,
             voiced_fraction=summary.voiced_fraction,
-            preview_frames=preview,
         ),
     )

@@ -49,14 +49,13 @@ Fields:
 
 ## PitchMetadata
 
-Pitch summary for `POST /audio/inspect`. Includes full-file stats plus a short preview only.
+Pitch summary for `POST /audio/inspect` (full-timeline stats only; no per-frame arrays).
 
 Fields:
 
 - `voiced_frame_count`: integer (full timeline).
 - `total_frame_count`: integer (full timeline).
 - `voiced_fraction`: float (full timeline).
-- `preview_frames`: list of `PitchFrame`, **first 5 frames only** (not the full series).
 
 ## AudioInspectResponse
 
@@ -84,8 +83,7 @@ Example:
   "pitch_metadata": {
     "voiced_frame_count": 1200,
     "total_frame_count": 1500,
-    "voiced_fraction": 0.8,
-    "preview_frames": []
+    "voiced_fraction": 0.8
   }
 }
 ```

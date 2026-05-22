@@ -64,7 +64,6 @@ async def inspect_audio(
         "success",
         file_id=result.file_info.file_id,
         duration_s=result.file_info.duration_seconds,
-        preview_frames=len(result.pitch_metadata.preview_frames),
         total_frames=result.pitch_metadata.total_frame_count,
         voiced_fraction=result.pitch_metadata.voiced_fraction,
     )

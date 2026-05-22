@@ -70,8 +70,8 @@ Test cases:
 ### Audio Inspect
 
 - Valid file returns `file_info` and `pitch_metadata`.
-- `preview_frames` length is 5 (or fewer if timeline is shorter).
-- `total_frame_count` can exceed preview length.
+- `pitch_metadata` includes voiced stats only (no `preview_frames`).
+- `total_frame_count` reflects the full extracted timeline.
 - Unsupported file returns `unsupported_file_type`.
 - Sparse pitch returns `no_vocals_detected`.
 - Long file returns `file_too_long`.

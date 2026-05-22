@@ -27,7 +27,7 @@ def _inspect(client: TestClient, path: Path, role: str = "guru"):
         )
 
 
-def test_inspect_valid_wav_returns_metadata_and_pitch_preview(
+def test_inspect_valid_wav_returns_metadata_and_pitch_stats(
     client: TestClient, tmp_path: Path
 ) -> None:
     wav = write_wav(tmp_path / "guru.wav", duration_seconds=1.5, sample_rate=44100)
@@ -44,13 +44,10 @@ def test_inspect_valid_wav_returns_metadata_and_pitch_preview(
     assert 1.0 <= file_info["duration_seconds"] <= 1.6
 
     pitch = data["pitch_metadata"]
-    assert pitch["total_frame_count"] > config.INSPECT_PITCH_PREVIEW_FRAMES
-    assert pitch["voiced_frame_count"] > 0
-    assert pitch["voiced_fraction"] > 0.0
-    assert len(pitch["preview_frames"]) == config.INSPECT_PITCH_PREVIEW_FRAMES
-    assert pitch["preview_frames"][0]["time_seconds"] >= 0.0
-    voiced = [f for f in pitch["preview_frames"] if f["voiced"] and f["frequency_hz"]]
-    assert voiced
+    assert pitch["total_frame_count"] > 0
+    assert pitch["voiced_frame_count"] >= config.MIN_VOICED_FRAMES_TOTAL
+    assert pitch["voiced_fraction"] >= config.MIN_VOICED_FRACTION
+    assert "preview_frames" not in pitch
 
 
 def test_inspect_unsupported_type(client: TestClient, tmp_path: Path) -> None:

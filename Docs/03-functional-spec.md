@@ -54,7 +54,7 @@ Validation rules:
 Inspect response:
 
 - `file_info`: `AudioFileInfo`.
-- `pitch_metadata`: full-file voiced stats plus `preview_frames` (first **5** frames only).
+- `pitch_metadata`: full-file voiced stats (`voiced_frame_count`, `total_frame_count`, `voiced_fraction`).
 
 Supported MVP formats:
 
