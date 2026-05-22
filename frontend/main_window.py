@@ -9,6 +9,7 @@ from PySide6.QtCore import QObject, QThread, Signal, Qt
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QFileDialog,
+    QHBoxLayout,
     QLabel,
     QMainWindow,
     QMessageBox,
@@ -17,9 +18,12 @@ from PySide6.QtWidgets import (
 )
 
 from frontend.api_client import ApiError, HcsaApiClient
+from frontend.theme import SUBTITLE_STYLE, TITLE_STYLE
 from frontend.validation import validate_upload_path
+from frontend.widgets.bordered_cluster import create_bordered_cluster
 from frontend.widgets.comparison_graph import ComparisonGraph
 from frontend.widgets.status_bar import StatusBar
+from frontend.widgets.summary_panel import ComparisonSummaryPanel
 from frontend.widgets.upload_panel import FILE_FILTER, UploadPanel
 
 APP_TITLE = "Hindustani Classical Singing Analysis"
@@ -89,17 +93,36 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(central)
 
         title = QLabel(APP_TITLE)
-        title.setStyleSheet("font-size: 18px; font-weight: bold;")
+        title.setStyleSheet(TITLE_STYLE)
         subtitle = QLabel(APP_SUBTITLE)
-        subtitle.setStyleSheet("color: #555;")
+        subtitle.setStyleSheet(SUBTITLE_STYLE)
         layout.addWidget(title)
         layout.addWidget(subtitle)
 
         self.graph = ComparisonGraph(central)
         layout.addWidget(self.graph, stretch=1)
 
-        self.upload_panel = UploadPanel(central)
-        layout.addWidget(self.upload_panel)
+        control_row = QWidget(central)
+        control_layout = QHBoxLayout(control_row)
+        control_layout.setContentsMargins(0, 8, 0, 8)
+        control_layout.setSpacing(12)
+
+        self.upload_panel = UploadPanel(control_row)
+        self.summary_panel = ComparisonSummaryPanel(control_row)
+
+        uploads_cluster = create_bordered_cluster(self.upload_panel, parent=control_row)
+        metrics_cluster = create_bordered_cluster(
+            self.summary_panel,
+            parent=control_row,
+            margins=(10, 10, 10, 10),
+        )
+
+        control_layout.addWidget(uploads_cluster, stretch=1)
+        control_layout.addWidget(
+            metrics_cluster,
+            alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight,
+        )
+        layout.addWidget(control_row)
 
         self.status_bar = StatusBar(central)
         layout.addWidget(self.status_bar)
@@ -228,6 +251,7 @@ class MainWindow(QMainWindow):
 
         self.status_bar.set_status("Comparing recordings...")
         self.graph.show_empty_state()
+        self.summary_panel.show_empty()
         self._run_api_task(
             lambda: self._client.compare_audio(),
             self._on_compare_ready,
@@ -241,6 +265,11 @@ class MainWindow(QMainWindow):
             self._clear_session_and_reset()
             return
 
+        summary = payload.get("comparison_summary")
+        if isinstance(summary, dict):
+            self.summary_panel.show_summary(summary)
+        else:
+            self.summary_panel.show_empty()
         self.status_bar.set_status("Comparison complete.")
         self.graph.show_empty_state()
 
@@ -272,6 +301,7 @@ class MainWindow(QMainWindow):
         self._guru_valid = False
         self._disciple_valid = False
         self.upload_panel.reset()
+        self.summary_panel.reset()
         self.graph.reset()
         if self._backend_ready:
             self.status_bar.set_status("Ready — upload guru and disciple audio.")

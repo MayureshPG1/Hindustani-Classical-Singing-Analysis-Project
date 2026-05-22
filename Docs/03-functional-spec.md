@@ -73,8 +73,9 @@ Acceptance criteria:
 - Compare button is disabled until both files are valid.
 - Clicking Compare sends both files to the local backend (optional `tolerance_cents`, default 0).
 - App shows progress states.
-- Backend returns `comparison_summary` metrics (overall score, deviation, match/higher/lower percentages).
-- App may display summary readouts; dual-contour graph requires a future pitch endpoint.
+- Backend returns `comparison_summary` metrics (overall score, deviation, match/higher/lower percentages, tolerance used).
+- App shall display `comparison_summary` in the comparison metrics panel (third row, bottom-right) after a successful compare.
+- Dual-contour graph requires a future pitch endpoint (Phase 6).
 - Errors do not crash the app.
 - Errors are shown as popups.
 - After an error popup is dismissed, the UI resets to the starting state.
@@ -132,16 +133,18 @@ Acceptance criteria:
 - Unvoiced or low-confidence sections do not create misleading lines.
 - Hover tooltips and zoom/pan are deferred (not required for MVP).
 
-### FS-10: Show Basic File Summary (Optional)
+### FS-10: Show Comparison Metrics
 
-The frontend may show lightweight readouts after comparison (not scoring).
+After a successful compare, the frontend shall show wall-clock comparison metrics from `comparison_summary`.
 
-Examples:
+Acceptance criteria:
 
-- Guru and disciple duration.
-- Voiced frame count or voiced fraction per file.
+- Panel is on the third UI row, bottom-right (upload/compare row).
+- Shows: match score (`overall_score`), average deviation (cents), match / higher / lower percentages, and tolerance used.
+- Hidden or placeholder before compare and after Clear or error reset.
+- Guru and disciple duration (and optional voiced fraction) remain on per-file status lines after inspect.
 
-Compare returns match/higher/lower percentages and overall score via `comparison_summary` (wall-clock Hz v1). Graph pitch overlay is a later frontend slice.
+Graph pitch overlay is a later frontend slice (Phase 6).
 
 ### FS-11: Clear Session and Temporary Files
 

@@ -5,6 +5,8 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
+from frontend.theme import MUTED_LABEL_STYLE
+
 EMPTY_STATE_TEXT = "Upload guru and disciple audio to compare."
 
 
@@ -16,6 +18,7 @@ class ComparisonGraph(QWidget):
         self.placeholder = QLabel(EMPTY_STATE_TEXT)
         self.placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.placeholder.setWordWrap(True)
+        self.placeholder.setStyleSheet(MUTED_LABEL_STYLE)
         layout = QVBoxLayout(self)
         layout.addWidget(self.placeholder)
         self.setMinimumHeight(240)

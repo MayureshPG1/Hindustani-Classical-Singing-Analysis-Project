@@ -103,6 +103,8 @@ Test cases:
 - Error appears as a popup.
 - Dismissing an error popup resets the UI to the starting state.
 - Graph shows two series after successful comparison.
+- After successful compare, comparison metrics panel shows match score, deviation, and match/higher/lower percentages.
+- Clear or error reset hides comparison metrics.
 
 ## Integration Tests
 

@@ -31,7 +31,7 @@ Responsibilities:
 - Run client-side file validation before API calls.
 - Send both files to compare endpoint.
 - Render dual F0 contours with `pyqtgraph`.
-- Show optional lightweight summary and errors.
+- Show comparison metrics (`comparison_summary`) and errors.
 
 Libraries:
 
@@ -95,6 +95,7 @@ frontend/
   widgets/
     upload_panel.py
     comparison_graph.py
+    summary_panel.py
     status_bar.py
 
 shared/

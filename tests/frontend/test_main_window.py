@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QMessageBox
 
 from frontend.api_client import ApiError
 from frontend.main_window import MainWindow
+from frontend.widgets.summary_panel import EMPTY_TEXT, ComparisonSummaryPanel
 
 
 class FakeApiClient:
@@ -111,6 +112,44 @@ def test_compare_disabled_until_both_files_valid(qtbot, tmp_path: Path) -> None:
     assert window.upload_panel.compare_button.isEnabled()
 
 
+def test_summary_panel_formats_comparison_metrics() -> None:
+    panel = ComparisonSummaryPanel()
+    panel.show_summary(
+        {
+            "overall_score": 72.5,
+            "average_deviation_cents": 18.3,
+            "match_percentage": 72.5,
+            "higher_percentage": 15.0,
+            "lower_percentage": 12.5,
+            "tolerance_cents": 10,
+        }
+    )
+    assert panel._value_labels["overall_score"].text() == "72.5%"
+    assert panel._value_labels["average_deviation_cents"].text() == "18.3 cents"
+    assert panel._value_labels["tolerance_cents"].text() == "10 cents"
+    panel.reset()
+    assert panel._value_labels["overall_score"].text() == "—"
+    assert EMPTY_TEXT in panel._placeholder.text()
+
+
+def test_compare_populates_summary_panel(qtbot) -> None:
+    window = _open_window(qtbot)
+    window._on_compare_ready(
+        {
+            "comparison_summary": {
+                "overall_score": 90.0,
+                "average_deviation_cents": 2.0,
+                "match_percentage": 90.0,
+                "higher_percentage": 5.0,
+                "lower_percentage": 5.0,
+                "tolerance_cents": 0,
+            }
+        }
+    )
+    assert window.summary_panel._value_labels["overall_score"].text() == "90.0%"
+    assert window.summary_panel._stack.currentIndex() == 1
+
+
 def test_error_popup_then_ui_reset(qtbot, monkeypatch) -> None:
     shown: list[str] = []
 
@@ -134,3 +173,4 @@ def test_error_popup_then_ui_reset(qtbot, monkeypatch) -> None:
     assert window._guru_path is None
     assert window._disciple_path is None
     assert not window.upload_panel.compare_button.isEnabled()
+    assert EMPTY_TEXT in window.summary_panel._placeholder.text()

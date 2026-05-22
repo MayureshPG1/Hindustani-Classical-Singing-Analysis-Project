@@ -27,10 +27,12 @@ BACKEND_MODULES = [
 
 FRONTEND_MODULES = [
     "frontend.app",
+    "frontend.theme",
     "frontend.main_window",
     "frontend.api_client",
     "frontend.backend_manager",
     "frontend.validation",
+    "frontend.widgets.bordered_cluster",
     "frontend.widgets.upload_panel",
     "frontend.widgets.tolerance_control",
     "frontend.widgets.comparison_graph",

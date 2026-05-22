@@ -89,9 +89,10 @@ Testing:
 4. Compare files through local FastAPI backend at `http://127.0.0.1:8765/api/v1`.
 5. Extract pitch using `librosa.pyin` with thresholds in `07-architecture.md`.
 6. Return `comparison_summary` from `POST /compare` (wall-clock Hz scoring; optional `tolerance_cents`).
-7. Show dual F0 graph (Hz vs time) when graph UI and pitch data endpoint exist.
-8. Return specific errors for no audio, no vocals, and comparison failure.
-9. Clear button and session/temp cleanup.
+7. Show comparison metrics panel (third row, bottom-right): match score, average deviation, match/higher/lower percentages, tolerance used.
+8. Show dual F0 graph (Hz vs time) when graph UI and pitch data endpoint exist.
+9. Return specific errors for no audio, no vocals, and comparison failure.
+10. Clear button and session/temp cleanup.
 
 ## Suggested First Implementation Slice
 
@@ -113,9 +114,10 @@ Then build frontend:
 3. Upload controls.
 4. API client.
 5. Graph widget (dual Hz vs time).
-6. Error popups with UI reset and temp delete.
-7. Clear button.
-8. Backend process management on port 8765.
+6. Comparison metrics panel (`summary_panel.py`).
+7. Error popups with UI reset and temp delete.
+8. Clear button.
+9. Backend process management on port 8765.
 
 Then package:
 

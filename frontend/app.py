@@ -8,8 +8,10 @@ def main() -> None:
     from PySide6.QtWidgets import QApplication
 
     from frontend.main_window import MainWindow
+    from frontend.theme import APP_STYLESHEET
 
     application = QApplication([])
+    application.setStyleSheet(APP_STYLESHEET)
     window = MainWindow()
     window.show()
     application.exec()

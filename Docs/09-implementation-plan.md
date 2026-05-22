@@ -98,6 +98,7 @@ Tasks:
 - Add required Clear button.
 - Add compare button.
 - Add status and error display.
+- Add comparison metrics panel (third row, bottom-right) from `comparison_summary`.
 - Add API client using `httpx`.
 - Add error popup behavior.
 - Add UI reset after error popup dismissal.
@@ -108,6 +109,7 @@ Deliverables:
 - Backend health is checked.
 - Files can be selected.
 - Errors are shown as popups and reset the UI.
+- Compare shows match score, deviation, and match/higher/lower percentages in the metrics panel.
 
 ## Phase 6: Graph UI
 
@@ -117,7 +119,6 @@ Tasks:
 - Plot guru `frequency_hz` vs `time_seconds`.
 - Plot disciple `frequency_hz` vs `time_seconds`.
 - Break or omit line segments for unvoiced frames.
-- Optional minimal summary (durations / voiced fraction).
 
 Deliverables:
 

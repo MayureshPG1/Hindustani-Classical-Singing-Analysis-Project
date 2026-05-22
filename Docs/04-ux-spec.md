@@ -16,7 +16,7 @@ Primary regions:
 - File status area.
 - Processing status area.
 - Graph area.
-- Optional lightweight summary (durations / voiced stats).
+- Comparison metrics panel (after Compare).
 - Error popup.
 
 ## Layout
@@ -32,16 +32,12 @@ Recommended desktop layout:
    - The graph should take the main visual focus of the screen.
    - Before comparison, the graph row may show the empty-state placeholder.
 
-3. Control row:
-   - `Upload Guru Voice` button.
-   - Guru file status.
-   - `Upload Disciple Voice` button.
-   - Disciple file status.
-   - `Compare` button.
-   - `Clear` button (required for MVP).
-   - Optional compact summary (durations, voiced fraction).
+3. Control row (third row):
+   - **Left bordered cluster:** `Upload Guru Voice`, guru file status, `Upload Disciple Voice`, disciple file status, `Compare`, and `Clear`.
+   - **Right bordered cluster (fixed width):** comparison metrics panel (see below).
+   - Clusters are visually separated (border + background) so the row height stays stable when metrics appear.
 
-4. Bottom/status area:
+4. Bottom/status area (fourth row):
    - Processing status.
    - Non-error status text only.
 
@@ -77,12 +73,13 @@ Behavior:
 - On click, starts analysis.
 - Shows progress state.
 - Prevents duplicate compare requests while processing.
+- On success, populates the comparison metrics panel (third row, bottom-right) from `comparison_summary`.
 
 ### Clear
 
 Required MVP behavior:
 
-- Clears selected files, graph, summary, and errors.
+- Clears selected files, graph, comparison metrics, and errors.
 - Calls `POST /api/v1/session/clear`.
 - Deletes all temporary session files.
 
@@ -142,18 +139,33 @@ Hover tooltip and zoom/pan are deferred (not required for MVP).
 - Y-axis Indian swara labels (100-cent bins).
 - X-axis concatenated `aligned_time` (matched segments only).
 - Tolerance band around guru contour.
-- Match / higher / lower region coloring.
-- Summary panel: overall score, average deviation, match/higher/lower percentages, tolerance used.
+- Match / higher / lower region coloring on the graph.
 - Error popups: Sa could not be detected; no matching vocal pattern found.
 
-## Summary UX (Optional)
+## Comparison Metrics Panel (MVP)
 
-If shown, keep minimal:
+Location: **third row, bottom-right** (same row as upload controls and Compare/Clear).
 
-- Guru duration and disciple duration.
-- Optional voiced frame count or voiced percentage per file.
+Visibility:
 
-Do not show overall match score, deviation percentages, or tolerance used.
+- Before Compare: placeholder text (e.g. “Comparison metrics appear here after Compare.”).
+- After successful Compare: show values from `comparison_summary`.
+- After Clear or error reset: return to placeholder.
+
+Fields (labels user-facing):
+
+| Label | API field | Format |
+| --- | --- | --- |
+| Match score | `overall_score` | Percent, one decimal (same as match share of scored pairs). |
+| Avg deviation | `average_deviation_cents` | Cents, one decimal. |
+| Match | `match_percentage` | Percent, one decimal. |
+| Higher | `higher_percentage` | Percent, one decimal. |
+| Lower | `lower_percentage` | Percent, one decimal. |
+| Tolerance | `tolerance_cents` | Integer cents used for classification (default 0). |
+
+No tolerance editor in MVP; tolerance is shown read-only from the compare response.
+
+Per-file duration and voiced fraction remain on the guru/disciple status lines after inspect (not in this panel).
 
 ## Error UX
 
