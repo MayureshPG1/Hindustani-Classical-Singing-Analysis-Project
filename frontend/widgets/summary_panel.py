@@ -7,7 +7,7 @@ from typing import Any
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QGridLayout, QLabel, QStackedWidget, QVBoxLayout, QWidget
 
-from frontend.theme import MUTED_LABEL_STYLE, TRANSPARENT_WIDGET_STYLE
+from frontend.theme import COLOR_TEXT, MUTED_LABEL_STYLE, TRANSPARENT_WIDGET_STYLE
 
 EMPTY_TEXT = "Comparison metrics appear here after Compare."
 
@@ -42,7 +42,9 @@ class ComparisonSummaryPanel(QWidget):
         outer.setSpacing(6)
 
         self.title = QLabel("Comparison")
-        self.title.setStyleSheet("font-weight: bold; background: transparent; color: #ececec;")
+        self.title.setStyleSheet(
+            f"font-weight: bold; background: transparent; color: {COLOR_TEXT};"
+        )
         outer.addWidget(self.title)
 
         self._stack = QStackedWidget(self)

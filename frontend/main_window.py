@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from frontend.api_client import ApiError, HcsaApiClient
+from frontend.assets import ICON_DISPLAY_SIZE, load_app_icon, load_app_icon_pixmap
 from frontend.theme import SUBTITLE_STYLE, TITLE_STYLE
 from frontend.validation import validate_upload_path
 from frontend.widgets.bordered_cluster import create_bordered_cluster
@@ -87,17 +88,39 @@ class MainWindow(QMainWindow):
 
     def _build_ui(self) -> None:
         self.setWindowTitle(APP_TITLE)
+        self.setWindowIcon(load_app_icon())
         self.resize(960, 720)
 
         central = QWidget(self)
         layout = QVBoxLayout(central)
 
-        title = QLabel(APP_TITLE)
+        header = QWidget(central)
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(12)
+
+        icon_pixmap = load_app_icon_pixmap()
+        icon_label = QLabel(header)
+        icon_label.setFixedSize(ICON_DISPLAY_SIZE, ICON_DISPLAY_SIZE)
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignTop)
+        if not icon_pixmap.isNull():
+            icon_label.setPixmap(icon_pixmap)
+        header_layout.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignTop)
+
+        title_column = QWidget(header)
+        title_column_layout = QVBoxLayout(title_column)
+        title_column_layout.setContentsMargins(0, 0, 0, 0)
+        title_column_layout.setSpacing(2)
+
+        title = QLabel(APP_TITLE, title_column)
         title.setStyleSheet(TITLE_STYLE)
-        subtitle = QLabel(APP_SUBTITLE)
+        subtitle = QLabel(APP_SUBTITLE, title_column)
         subtitle.setStyleSheet(SUBTITLE_STYLE)
-        layout.addWidget(title)
-        layout.addWidget(subtitle)
+        title_column_layout.addWidget(title)
+        title_column_layout.addWidget(subtitle)
+        header_layout.addWidget(title_column, stretch=1)
+
+        layout.addWidget(header)
 
         self.graph = ComparisonGraph(central)
         layout.addWidget(self.graph, stretch=1)

@@ -6,7 +6,15 @@ import math
 
 import numpy as np
 
-from frontend.widgets.comparison_graph import pitch_frames_to_plot_arrays
+from frontend.widgets.comparison_graph import (
+    DISCIPLE_LINE_WIDTH,
+    GURU_LINE_WIDTH,
+    pitch_frames_to_plot_arrays,
+)
+
+
+def test_guru_line_is_four_times_disciple_width() -> None:
+    assert GURU_LINE_WIDTH == DISCIPLE_LINE_WIDTH * 4
 
 
 def test_pitch_frames_to_plot_arrays_inserts_nan_gaps() -> None:
