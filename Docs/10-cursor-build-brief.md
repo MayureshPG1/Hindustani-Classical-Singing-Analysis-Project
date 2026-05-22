@@ -88,8 +88,8 @@ Testing:
 3. Client-side then API validation for both files (`inspect` returns `file_info` + pitch voiced stats).
 4. Compare files through local FastAPI backend at `http://127.0.0.1:8765/api/v1`.
 5. Extract pitch using `librosa.pyin` with thresholds in `07-architecture.md`.
-6. Return `guru_pitch_frames` and `disciple_pitch_frames` from `POST /compare`.
-7. Show dual F0 graph (Hz vs time).
+6. Return `comparison_summary` from `POST /compare` (wall-clock Hz scoring; optional `tolerance_cents`).
+7. Show dual F0 graph (Hz vs time) when graph UI and pitch data endpoint exist.
 8. Return specific errors for no audio, no vocals, and comparison failure.
 9. Clear button and session/temp cleanup.
 
@@ -99,11 +99,11 @@ Build the backend first:
 
 1. Create project structure.
 2. Add FastAPI health endpoint (port 8765).
-3. Add Pydantic models (slim `PitchFrame`, `ComparisonResult`).
+3. Add Pydantic models (slim `PitchFrame`, `ComparisonSummary`, `ComparisonResult`).
 4. Add clear-session endpoint (delete temp files).
 5. Add audio loader (WAV/MP3/M4A).
 6. Add pitch extractor with config thresholds.
-7. Add compare service and compare endpoint.
+7. Add compare service, scorer (wall-clock Hz), and compare endpoint.
 8. Add tests with synthetic audio.
 
 Then build frontend:

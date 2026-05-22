@@ -13,7 +13,7 @@ FastAPI Backend on 127.0.0.1:8765
   |
   | audio_loader + pitch_extractor
   v
-ComparisonResult JSON (dual pitch series)
+ComparisonResult JSON (summary metrics)
   |
   v
 PyQtGraph Visualization (Hz vs time)
@@ -122,7 +122,8 @@ Legacy modules (`sa_detector`, `swara_mapper`, `matched_portion_finder`, `aligne
 6. Extract F0 with `librosa.pyin` for each file.
 7. Preserve frame timeline and mark unvoiced frames.
 8. Optionally compute per-file voiced counts for summary.
-9. Return `ComparisonResult` with `guru_pitch_frames` and `disciple_pitch_frames`.
+9. Score overlapping wall-clock frame pairs (Hz-ratio cents vs tolerance).
+10. Return `ComparisonResult` with `comparison_summary` (no pitch arrays in API).
 
 ### pyin and vocal thresholds (`config.py`)
 
@@ -144,7 +145,7 @@ Sa-specific constants (`VOICED_PROB_SA_MIN`, `SA_*`) are not used in minimal MVP
 ## Inspect vs Compare
 
 - **Inspect:** load → pyin (full timeline for stats) → `AudioInspectResponse` with `file_info` and `pitch_metadata` (voiced counts only).
-- **Compare:** load both files → pyin → full `guru_pitch_frames` and `disciple_pitch_frames`.
+- **Compare:** load both files → pyin → wall-clock score → `comparison_summary` (pitch kept internal only).
 
 ## Graph Rendering Strategy
 

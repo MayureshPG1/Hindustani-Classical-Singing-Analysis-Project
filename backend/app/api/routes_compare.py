@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 
 from backend.app.core.errors import raise_decode_failed, raise_unsupported_file_type
 from backend.app.core.request_log import log_event, log_step
@@ -13,7 +13,8 @@ from backend.app.services.audio_loader import (
     make_file_id,
     normalize_extension,
 )
-from backend.app.services.compare_service import compare_audio_files
+from backend.app.services.compare_service import compare_audio_files, validate_tolerance_cents
+from shared.constants import DEFAULT_TOLERANCE_CENTS
 
 router = APIRouter(tags=["compare"])
 
@@ -35,13 +36,16 @@ async def compare_recordings(
     request: Request,
     guru_file: UploadFile = File(...),
     disciple_file: UploadFile = File(...),
+    tolerance_cents: int = Form(DEFAULT_TOLERANCE_CENTS),
     session: SessionManager = Depends(get_session),
 ) -> ComparisonResult:
+    validate_tolerance_cents(tolerance_cents)
     log_event(
         "POST /compare",
         "called",
         guru=guru_file.filename,
         disciple=disciple_file.filename,
+        tolerance_cents=tolerance_cents,
     )
 
     guru_name = guru_file.filename or "guru"
@@ -84,6 +88,7 @@ async def compare_recordings(
                 disciple_path=disciple_dest,
                 disciple_file_name=disciple_name,
                 disciple_file_id=disciple_id,
+                tolerance_cents=tolerance_cents,
             )
     finally:
         session.processing_status = "idle"
@@ -92,12 +97,12 @@ async def compare_recordings(
     session.set_role_file("disciple", result.disciple_file_info.file_id, disciple_dest)
     session.cached_comparison = result
 
+    summary = result.comparison_summary
     log_event(
         "POST /compare",
         "success",
-        guru_frames=len(result.guru_pitch_frames),
-        disciple_frames=len(result.disciple_pitch_frames),
-        guru_voiced=result.guru_summary.voiced_fraction if result.guru_summary else None,
-        disciple_voiced=result.disciple_summary.voiced_fraction if result.disciple_summary else None,
+        overall_score=summary.overall_score,
+        match_percentage=summary.match_percentage,
+        tolerance_cents=summary.tolerance_cents,
     )
     return result

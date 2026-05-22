@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from shared.constants import MAX_AUDIO_DURATION_SECONDS
+from shared.constants import (
+    MAX_AUDIO_DURATION_SECONDS,
+    MAX_TOLERANCE_CENTS,
+    MIN_TOLERANCE_CENTS,
+)
 
 UNSUPPORTED_FILE_TYPE_MESSAGE = "File type is not supported. Use WAV, MP3, or M4A."
 FILE_TOO_LONG_MESSAGE = "Audio file must be 5 minutes or shorter."
@@ -10,6 +14,10 @@ NO_AUDIO_DETECTED_MESSAGE = "No usable audio was detected in this file."
 DECODE_FAILED_MESSAGE = "The audio file could not be decoded."
 NO_VOCALS_DETECTED_MESSAGE = (
     "No reliable vocal pitch was detected. Try a clearer vocal recording."
+)
+INVALID_TOLERANCE_MESSAGE = "Tolerance must be between 0 and 25 cents."
+COMPARISON_FAILED_MESSAGE = (
+    "Comparison could not be scored. No overlapping voiced pitch was found."
 )
 
 
@@ -61,3 +69,22 @@ def raise_no_vocals_detected(*, role: str, summary: object | None = None) -> Non
         else:
             details["pitch_summary"] = summary
     raise HcsaError("no_vocals_detected", NO_VOCALS_DETECTED_MESSAGE, details)
+
+
+def raise_invalid_tolerance(tolerance_cents: int) -> None:
+    raise HcsaError(
+        "invalid_tolerance",
+        INVALID_TOLERANCE_MESSAGE,
+        {
+            "tolerance_cents": tolerance_cents,
+            "min_tolerance_cents": MIN_TOLERANCE_CENTS,
+            "max_tolerance_cents": MAX_TOLERANCE_CENTS,
+        },
+    )
+
+
+def raise_comparison_failed(reason: str | None = None) -> None:
+    details: dict[str, str] = {}
+    if reason:
+        details["reason"] = reason
+    raise HcsaError("comparison_failed", COMPARISON_FAILED_MESSAGE, details)

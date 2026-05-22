@@ -111,19 +111,21 @@ POST /compare
 
 Purpose:
 
-Load guru and disciple recordings, extract pitch for each, and return graph-ready pitch frame arrays.
+Load guru and disciple recordings, extract pitch, score by **wall-clock Hz pairing** (no Sa, no DTW), and return summary metrics only.
 
 Request:
 
 - Content type: `multipart/form-data`
 - Field: `guru_file`
 - Field: `disciple_file`
+- Field: `tolerance_cents` (optional integer, default `0`, range `0`–`25`)
 
 Example request fields:
 
 ```txt
 guru_file=@guru.wav
 disciple_file=@disciple.wav
+tolerance_cents=10
 ```
 
 Success response shape:
@@ -150,30 +152,32 @@ Success response shape:
     "validation_status": "valid",
     "error_message": null
   },
-  "guru_pitch_frames": [],
-  "disciple_pitch_frames": [],
-  "guru_summary": {
-    "voiced_frame_count": 1200,
-    "total_frame_count": 1500,
-    "voiced_fraction": 0.8
-  },
-  "disciple_summary": {
-    "voiced_frame_count": 1100,
-    "total_frame_count": 1600,
-    "voiced_fraction": 0.69
-  },
-  "warnings": []
+  "comparison_summary": {
+    "overall_score": 72.5,
+    "average_deviation_cents": 18.3,
+    "match_percentage": 72.5,
+    "higher_percentage": 15.0,
+    "lower_percentage": 12.5,
+    "tolerance_cents": 10
+  }
 }
 ```
 
-Comparison behavior:
+Comparison behavior (v1):
 
-- Guru and disciple files may have different durations as long as each file is 5 minutes or shorter.
+- Guru and disciple files may have different durations; only the **overlapping** wall-clock region is scored.
+- For each guru frame at time `t` within overlap, pair the disciple frame with nearest `time_seconds`.
+- Deviation in cents: `1200 * log2(disciple_hz / guru_hz)` (no Sa normalization).
+- Classify each scorable pair vs `tolerance_cents`: match, higher, lower.
+- Percentages sum to 100% over scored pairs; `overall_score` equals `match_percentage`.
 - Supported formats: WAV, MP3, and M4A.
-- Backend preserves full timeline; does not trim silence.
-- Each `PitchFrame` uses `time_seconds` from the start of that recording (wall-clock).
-- Frontend plots `frequency_hz` vs `time_seconds` for each series (omit or break line where `frequency_hz` is null).
-- No Sa normalization, swara labels, DTW, matched segments, or scoring in MVP.
+- Pitch is extracted internally; **pitch frame arrays are not returned** from this endpoint.
+- No Sa detection, swara labels, DTW, or matched-portion finder in v1.
+
+Additional error codes for compare:
+
+- `invalid_tolerance` — `tolerance_cents` outside 0–25.
+- `comparison_failed` — no overlapping voiced frame pairs to score.
 
 ## Endpoint: Clear Session
 

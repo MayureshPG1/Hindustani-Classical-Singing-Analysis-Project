@@ -48,14 +48,15 @@ Test cases:
 - Handles no-pitch audio without crash.
 - Returns `no_vocals_detected` when voiced fraction is below threshold.
 
-### Compare Service (when implemented)
+### Compare Service / Scorer
 
 Test cases:
 
-- Returns both `guru_pitch_frames` and `disciple_pitch_frames`.
-- Frame times start at 0 and advance by hop for each file.
-- Unvoiced frames have null `frequency_hz`.
-- Different-duration inputs both return full timelines.
+- Returns `comparison_summary` with overall score, average deviation, match/higher/lower percentages, tolerance used.
+- Same-pitch fixtures yield high match percentage.
+- Detuned disciple yields higher average deviation and lower match at tolerance 0.
+- Different-duration inputs score overlap window only.
+- `invalid_tolerance` for out-of-range tolerance.
 
 ## API Tests
 
@@ -80,11 +81,12 @@ Test cases:
 
 ### Compare
 
-- Valid guru and disciple files return `ComparisonResult`.
-- Response includes `guru_pitch_frames` and `disciple_pitch_frames`.
-- Voiced sine fixtures produce expected `frequency_hz` near target.
+- Valid guru and disciple files return `ComparisonResult` with `comparison_summary`.
+- Response does not include `guru_pitch_frames` or `disciple_pitch_frames`.
+- Same-frequency sines produce high `match_percentage`.
 - No vocals returns `no_vocals_detected`.
 - Missing or corrupt file returns appropriate structured error.
+- Invalid `tolerance_cents` returns `invalid_tolerance`.
 
 ## Frontend Tests
 

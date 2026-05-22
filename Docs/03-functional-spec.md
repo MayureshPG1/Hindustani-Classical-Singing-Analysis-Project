@@ -71,10 +71,10 @@ The app shall compare guru and disciple recordings using local processing.
 Acceptance criteria:
 
 - Compare button is disabled until both files are valid.
-- Clicking Compare sends both files to the local backend (no tolerance parameter).
+- Clicking Compare sends both files to the local backend (optional `tolerance_cents`, default 0).
 - App shows progress states.
-- Backend returns pitch frame arrays for both recordings.
-- App displays dual-contour graph.
+- Backend returns `comparison_summary` metrics (overall score, deviation, match/higher/lower percentages).
+- App may display summary readouts; dual-contour graph requires a future pitch endpoint.
 - Errors do not crash the app.
 - Errors are shown as popups.
 - After an error popup is dismissed, the UI resets to the starting state.
@@ -141,7 +141,7 @@ Examples:
 - Guru and disciple duration.
 - Voiced frame count or voiced fraction per file.
 
-Match/higher/lower percentages and overall score are out of scope for MVP.
+Compare returns match/higher/lower percentages and overall score via `comparison_summary` (wall-clock Hz v1). Graph pitch overlay is a later frontend slice.
 
 ### FS-11: Clear Session and Temporary Files
 

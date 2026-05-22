@@ -69,20 +69,23 @@ Deliverables:
 - Pitch frames include time, F0, confidence, voiced state.
 - Silence is represented, not trimmed.
 
-## Phase 4: Compare API (Pitch Only)
+## Phase 4: Compare API (Summary Metrics)
 
 Tasks:
 
-- Implement `compare_service`: load both files, extract pitch, package `ComparisonResult`.
-- Implement `POST /api/v1/compare` (multipart guru + disciple).
-- Optional per-file `PitchSummary` (voiced counts).
+- Implement `compare_service`: load both files, extract pitch, wall-clock score via `scorer.py`.
+- Implement `POST /api/v1/compare` (multipart guru + disciple + optional `tolerance_cents`).
+- Return `ComparisonResult` with `comparison_summary` only (no pitch arrays).
 - Add integration tests.
 
 Deliverables:
 
-- API returns graph-ready pitch arrays for both recordings.
-- `no_vocals_detected` when pitch is too sparse.
+- API returns `overall_score`, `average_deviation_cents`, match/higher/lower percentages, `tolerance_cents`.
+- Wall-clock Hz pairing (no Sa, no DTW in v1).
+- `no_vocals_detected` when pitch is too sparse; `invalid_tolerance`, `comparison_failed` as needed.
 - Error cases return structured errors.
+
+**Later:** Sa + global DTW scoring; optional pitch endpoint for graph UI (Phase 6).
 
 ## Phase 5: Frontend Shell
 
