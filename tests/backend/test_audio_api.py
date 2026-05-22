@@ -54,11 +54,35 @@ def test_inspect_valid_wav_returns_metadata_and_pitch_preview(
 
 
 def test_inspect_unsupported_type(client: TestClient, tmp_path: Path) -> None:
-    bad = tmp_path / "clip.m4a"
+    bad = tmp_path / "clip.flac"
     bad.write_bytes(b"\x00\x01")
     response = _inspect(client, bad)
     assert response.status_code == 400
     assert response.json()["error_code"] == "unsupported_file_type"
+
+
+def test_inspect_valid_m4a_if_decoder_available(
+    client: TestClient, tmp_path: Path
+) -> None:
+    pytest.importorskip("audioread")
+    import shutil
+    import subprocess
+
+    source = write_wav(tmp_path / "source.wav", duration_seconds=1.0, sample_rate=44100)
+    m4a = tmp_path / "guru.m4a"
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg is None:
+        pytest.skip("ffmpeg not available for M4A fixture")
+    subprocess.run(
+        [ffmpeg, "-y", "-i", str(source), "-c:a", "aac", str(m4a)],
+        check=True,
+        capture_output=True,
+    )
+    response = _inspect(client, m4a, role="guru")
+    assert response.status_code == 200
+    file_info = response.json()["file_info"]
+    assert file_info["format"] == "m4a"
+    assert file_info["validation_status"] == "valid"
 
 
 def test_inspect_file_too_long(client: TestClient, tmp_path: Path) -> None:

@@ -90,7 +90,7 @@ Tasks:
 
 - Create PySide6 app.
 - Create main window.
-- Add `frontend/validation.py` for client-side pre-checks (WAV/MP3, size, duration).
+- Add `frontend/validation.py` for client-side pre-checks (WAV/MP3/M4A, size, duration).
 - Add upload controls.
 - Add required Clear button.
 - Add compare button.

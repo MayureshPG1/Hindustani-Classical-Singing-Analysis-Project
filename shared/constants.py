@@ -10,4 +10,4 @@ API_BASE_URL = f"http://{API_HOST}:{API_PORT}/api/{API_VERSION}"
 APP_VERSION = "0.1.0"
 
 MAX_AUDIO_DURATION_SECONDS = 300  # 5 minutes per file
-SUPPORTED_AUDIO_EXTENSIONS = {".wav", ".mp3"}
+SUPPORTED_AUDIO_EXTENSIONS = {".wav", ".mp3", ".m4a"}

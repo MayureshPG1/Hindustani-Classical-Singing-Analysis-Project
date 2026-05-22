@@ -145,6 +145,7 @@ Recommended MVP support:
 
 - WAV
 - MP3
+- M4A
 
 ### File Constraints
 
@@ -190,7 +191,7 @@ Implementation library decision:
 
 - Use `librosa.load(..., mono=True, sr=22050)` as the primary audio loading path.
 - Use `soundfile` as the primary file-reading backend used by `librosa`.
-- Bundle FFmpeg support through `imageio-ffmpeg` so MP3 decoding is reliable in the packaged Windows app.
+- Bundle FFmpeg support through `imageio-ffmpeg` so MP3 and M4A decoding is reliable in the packaged Windows app.
 - Use NumPy arrays as the internal audio representation.
 - Do not call trimming helpers such as silence trimming; preserve the full loaded waveform and full time axis.
 
@@ -228,7 +229,7 @@ The MVP audio backend uses `librosa` for load, resample, and `librosa.pyin` F0 e
 
 | PRD Task | Final Library Choice | Justification |
 | --- | --- | --- |
-| Load audio | `librosa.load`, `soundfile`, `imageio-ffmpeg` | Reliable local decode for WAV/MP3 in packaged Windows app. |
+| Load audio | `librosa.load`, `soundfile`, `imageio-ffmpeg` | Reliable local decode for WAV/MP3/M4A in packaged Windows app. |
 | Preserve silence and endings | Custom logic with `numpy` arrays | Full timeline preserved; no trimming helpers. |
 | Mono conversion | `librosa.load(..., mono=True)` | Consistent mono analysis path. |
 | Resampling | `librosa.load(..., sr=22050)` with `soxr` | Predictable analysis rate. |
@@ -299,7 +300,7 @@ Finalized MVP technology choices:
 10. `numpy` and `scipy` for numerical processing and optional smoothing/filtering operations.
 11. `soundfile` for audio file reading support used by `librosa`.
 12. `soxr` for high-quality resampling through `librosa`.
-13. `imageio-ffmpeg` to package FFmpeg support for MP3 decoding on Windows.
+13. `imageio-ffmpeg` to package FFmpeg support for MP3 and M4A decoding on Windows.
 14. `PyInstaller` for compiling into a local Windows desktop executable.
 
 Recommended MVP choice:
@@ -746,7 +747,7 @@ Mitigation:
 11. Backend and frontend live in the same repository for MVP.
 12. Backend is a Python FastAPI API so future frontends can reuse it.
 13. MVP uses Python `3.11.x`, `librosa`, `librosa.pyin`, `PySide6`, `pyqtgraph`, `PyInstaller`.
-14. WAV and MP3 only; static backend port 8765; Clear required; client-side pre-validation; `no_vocals_detected` only.
+14. WAV, MP3, and M4A; static backend port 8765; Clear required; client-side pre-validation; `no_vocals_detected` only.
 15. pyin thresholds are defined in `07-architecture.md`.
 
 ## 20. Resolved Clarifications (MVP)

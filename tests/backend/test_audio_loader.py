@@ -28,10 +28,10 @@ def test_loads_wav_and_returns_metadata(tmp_path: Path) -> None:
 
 
 def test_rejects_unsupported_extension(tmp_path: Path) -> None:
-    path = tmp_path / "track.m4a"
+    path = tmp_path / "track.flac"
     path.write_bytes(b"fake")
     with pytest.raises(HcsaError) as exc_info:
-        load_and_validate(path, role="guru", file_name="track.m4a")
+        load_and_validate(path, role="guru", file_name="track.flac")
     assert exc_info.value.error_code == "unsupported_file_type"
 
 
@@ -112,4 +112,25 @@ def test_loads_mp3_if_decoder_available(tmp_path: Path) -> None:
     )
     loaded = load_and_validate(target, role="guru", file_name="tone.mp3")
     assert loaded.file_info.format == "mp3"
+    assert loaded.file_info.validation_status == ValidationStatus.VALID
+
+
+def test_loads_m4a_if_decoder_available(tmp_path: Path) -> None:
+    pytest.importorskip("audioread")
+    import shutil
+    import subprocess
+
+    source = tmp_path / "tone.wav"
+    write_wav(source, duration_seconds=0.5)
+    target = tmp_path / "tone.m4a"
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg is None:
+        pytest.skip("ffmpeg not available for M4A fixture")
+    subprocess.run(
+        [ffmpeg, "-y", "-i", str(source), "-c:a", "aac", str(target)],
+        check=True,
+        capture_output=True,
+    )
+    loaded = load_and_validate(target, role="guru", file_name="tone.m4a")
+    assert loaded.file_info.format == "m4a"
     assert loaded.file_info.validation_status == ValidationStatus.VALID

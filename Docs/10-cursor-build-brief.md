@@ -39,7 +39,7 @@ Read these docs before implementation:
 - Graph plots **full-timeline** F0 for both files on **wall-clock** `time_seconds`.
 - Y-axis: **Hz** (linear).
 - No Sa detection, swara mapping, DTW, matched portions, or tolerance scoring in MVP.
-- Supported formats: **WAV and MP3 only** (no M4A).
+- Supported formats: **WAV, MP3, and M4A**.
 - Errors must be shown as popups.
 - After an error popup is dismissed, reset the UI, delete temp files, and start again.
 - Client-side file validation before API inspect.
@@ -63,7 +63,7 @@ Audio:
 - `scipy`
 - `soundfile==0.13.1`
 - `soxr`
-- `imageio-ffmpeg` (MP3 decode in packaged app)
+- `imageio-ffmpeg` (MP3/M4A decode in packaged app)
 
 Frontend:
 
@@ -83,8 +83,8 @@ Testing:
 
 ## Required MVP Features
 
-1. Upload guru audio (WAV/MP3).
-2. Upload disciple audio (WAV/MP3).
+1. Upload guru audio (WAV/MP3/M4A).
+2. Upload disciple audio (WAV/MP3/M4A).
 3. Client-side then API validation for both files (`inspect` returns `file_info` + 5-frame pitch preview).
 4. Compare files through local FastAPI backend at `http://127.0.0.1:8765/api/v1`.
 5. Extract pitch using `librosa.pyin` with thresholds in `07-architecture.md`.
@@ -101,7 +101,7 @@ Build the backend first:
 2. Add FastAPI health endpoint (port 8765).
 3. Add Pydantic models (slim `PitchFrame`, `ComparisonResult`).
 4. Add clear-session endpoint (delete temp files).
-5. Add audio loader (WAV/MP3).
+5. Add audio loader (WAV/MP3/M4A).
 6. Add pitch extractor with config thresholds.
 7. Add compare service and compare endpoint.
 8. Add tests with synthetic audio.
@@ -136,7 +136,7 @@ requirements.txt
 ## Definition of Done
 
 - App launches locally; backend on `127.0.0.1:8765`.
-- User can upload guru and disciple WAV/MP3 files.
+- User can upload guru and disciple WAV/MP3/M4A files.
 - Compare returns pitch arrays and displays dual contour graph.
 - Invalid files and analysis failures produce popup errors and reset UI with temp cleanup.
 - Backend API tests pass.

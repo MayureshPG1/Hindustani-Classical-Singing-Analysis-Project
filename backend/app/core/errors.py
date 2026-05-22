@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from shared.constants import MAX_AUDIO_DURATION_SECONDS
 
-UNSUPPORTED_FILE_TYPE_MESSAGE = "File type is not supported. Use WAV or MP3 only."
+UNSUPPORTED_FILE_TYPE_MESSAGE = "File type is not supported. Use WAV, MP3, or M4A."
 FILE_TOO_LONG_MESSAGE = "Audio file must be 5 minutes or shorter."
 NO_AUDIO_DETECTED_MESSAGE = "No usable audio was detected in this file."
 DECODE_FAILED_MESSAGE = "The audio file could not be decoded."

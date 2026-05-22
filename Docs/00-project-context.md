@@ -72,7 +72,7 @@ The following were in the original Hindustani-comparison design and are **not** 
 - Live recording, real-time feedback, audio playback, export.
 - Detailed rhythm, taal, laya, or early/late timing analysis.
 - Coaching text or qualitative practice advice.
-- M4A and other formats beyond WAV/MP3.
+- Formats beyond WAV/MP3/M4A (e.g. FLAC, OGG).
 
 ## Product Constraints
 
@@ -92,7 +92,7 @@ The following were in the original Hindustani-comparison design and are **not** 
 
 - Maximum audio length: 5 minutes per file.
 - Clip durations may differ.
-- Supported upload formats: WAV and MP3 only (M4A out of scope for MVP).
+- Supported upload formats: WAV, MP3, and M4A.
 - Backend base URL: `http://127.0.0.1:8765/api/v1` (static port).
 - Initial analysis sample rate: 22050 Hz.
 - Initial pitch range: 50 Hz to 1000 Hz.

@@ -60,6 +60,7 @@ Supported MVP formats:
 
 - WAV
 - MP3
+- M4A
 
 The frontend shall perform basic client-side validation before calling the API (extension whitelist, file exists, size > 0, duration ≤ 300 s when metadata is available locally).
 

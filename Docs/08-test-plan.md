@@ -28,7 +28,8 @@ Test cases:
 
 - Loads WAV file.
 - Loads MP3 file if decoder is available.
-- Rejects unsupported formats (e.g. M4A).
+- Loads M4A file if decoder is available.
+- Rejects unsupported formats (e.g. FLAC).
 - Converts stereo to mono.
 - Resamples to 22050 Hz.
 - Preserves leading silence.

@@ -179,7 +179,7 @@ Success response shape:
 Comparison behavior:
 
 - Guru and disciple files may have different durations as long as each file is 5 minutes or shorter.
-- Supported formats: WAV and MP3 only.
+- Supported formats: WAV, MP3, and M4A.
 - Backend preserves full timeline; does not trim silence.
 - Each `PitchFrame` uses `time_seconds` from the start of that recording (wall-clock).
 - Frontend plots `frequency_hz` vs `time_seconds` for each series (omit or break line where `frequency_hz` is null).
@@ -252,7 +252,7 @@ Existing implementations may retain these until code is updated; new work should
 
 ## Frontend API Client Behavior
 
-- Run basic client-side file validation before `POST /audio/inspect` (extension `.wav`/`.mp3`, file exists, size > 0, duration ≤ 300 s when metadata is available).
+- Run basic client-side file validation before `POST /audio/inspect` (extension `.wav`/`.mp3`/`.m4a`, file exists, size > 0, duration ≤ 300 s when metadata is available).
 - Start backend process if needed on port **8765**.
 - Poll `GET /health` until backend is ready.
 - Use `POST /audio/inspect` after each file selection.

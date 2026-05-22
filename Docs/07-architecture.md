@@ -194,7 +194,7 @@ Packaging requirements:
 - No login.
 - No remote telemetry.
 - Backend binds only to localhost.
-- Uploaded files are processed locally (WAV and MP3 only).
+- Uploaded files are processed locally (WAV, MP3, and M4A).
 - Temporary files are deleted on session clear, UI reset after errors, and app exit.
 
 ## Out of scope for MVP (architecture to be added later)

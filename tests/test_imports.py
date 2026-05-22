@@ -51,10 +51,15 @@ def test_frontend_module_imports(module_name: str) -> None:
 
 
 def test_shared_constants() -> None:
-    from shared.constants import API_BASE_URL, MAX_AUDIO_DURATION_SECONDS
+    from shared.constants import (
+        API_BASE_URL,
+        MAX_AUDIO_DURATION_SECONDS,
+        SUPPORTED_AUDIO_EXTENSIONS,
+    )
 
     assert API_BASE_URL == "http://127.0.0.1:8765/api/v1"
     assert MAX_AUDIO_DURATION_SECONDS == 300
+    assert SUPPORTED_AUDIO_EXTENSIONS == {".wav", ".mp3", ".m4a"}
 
 
 def test_backend_config_matches_architecture() -> None:
@@ -76,6 +81,6 @@ def test_fastapi_app_factory() -> None:
 def test_frontend_validation_rejects_bad_extension(tmp_path) -> None:
     from frontend.validation import validate_upload_path
 
-    bad = tmp_path / "track.m4a"
+    bad = tmp_path / "track.flac"
     bad.write_bytes(b"\x00\x01")
     assert validate_upload_path(bad) is not None
