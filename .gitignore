@@ -15,5 +15,10 @@ build/
 # Session temp audio (runtime)
 hcsa-session/
 
+# Local / uploaded audio files
+*.wav
+*.mp3
+*.m4a
+
 # PyInstaller
 *.spec.bak

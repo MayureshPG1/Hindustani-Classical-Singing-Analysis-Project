@@ -9,6 +9,7 @@ import pytest
 
 from backend.app.core import config
 from backend.app.core.errors import HcsaError
+from backend.app.core.ffmpeg import configure_ffmpeg, get_ffmpeg_executable
 from backend.app.models.audio import ValidationStatus
 from backend.app.services.audio_loader import load_and_validate
 from tests.fixtures.audio_factory import write_silence_wav, write_wav
@@ -93,18 +94,16 @@ def test_decode_failed_for_corrupt_file(tmp_path: Path) -> None:
 
 
 def test_loads_mp3_if_decoder_available(tmp_path: Path) -> None:
-    pytest.importorskip("audioread")
-    import shutil
+    import subprocess
 
-    # Build a minimal mp3 via external tool if missing; skip when unavailable.
+    configure_ffmpeg()
+    ffmpeg = get_ffmpeg_executable()
+    if ffmpeg is None:
+        pytest.skip("FFmpeg not available for MP3 fixture")
+
     source = tmp_path / "tone.wav"
     write_wav(source, duration_seconds=0.5)
     target = tmp_path / "tone.mp3"
-    ffmpeg = shutil.which("ffmpeg")
-    if ffmpeg is None:
-        pytest.skip("ffmpeg not available for MP3 fixture")
-    import subprocess
-
     subprocess.run(
         [ffmpeg, "-y", "-i", str(source), str(target)],
         check=True,
@@ -116,16 +115,16 @@ def test_loads_mp3_if_decoder_available(tmp_path: Path) -> None:
 
 
 def test_loads_m4a_if_decoder_available(tmp_path: Path) -> None:
-    pytest.importorskip("audioread")
-    import shutil
     import subprocess
+
+    configure_ffmpeg()
+    ffmpeg = get_ffmpeg_executable()
+    if ffmpeg is None:
+        pytest.skip("FFmpeg not available for M4A fixture")
 
     source = tmp_path / "tone.wav"
     write_wav(source, duration_seconds=0.5)
     target = tmp_path / "tone.m4a"
-    ffmpeg = shutil.which("ffmpeg")
-    if ffmpeg is None:
-        pytest.skip("ffmpeg not available for M4A fixture")
     subprocess.run(
         [ffmpeg, "-y", "-i", str(source), "-c:a", "aac", str(target)],
         check=True,

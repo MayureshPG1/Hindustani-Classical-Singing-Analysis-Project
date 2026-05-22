@@ -64,15 +64,16 @@ def test_inspect_unsupported_type(client: TestClient, tmp_path: Path) -> None:
 def test_inspect_valid_m4a_if_decoder_available(
     client: TestClient, tmp_path: Path
 ) -> None:
-    pytest.importorskip("audioread")
-    import shutil
     import subprocess
 
+    from backend.app.core.ffmpeg import configure_ffmpeg, get_ffmpeg_executable
+
+    configure_ffmpeg()
     source = write_wav(tmp_path / "source.wav", duration_seconds=1.0, sample_rate=44100)
     m4a = tmp_path / "guru.m4a"
-    ffmpeg = shutil.which("ffmpeg")
+    ffmpeg = get_ffmpeg_executable()
     if ffmpeg is None:
-        pytest.skip("ffmpeg not available for M4A fixture")
+        pytest.skip("FFmpeg not available for M4A fixture")
     subprocess.run(
         [ffmpeg, "-y", "-i", str(source), "-c:a", "aac", str(m4a)],
         check=True,

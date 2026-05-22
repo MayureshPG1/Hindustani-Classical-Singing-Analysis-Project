@@ -117,7 +117,7 @@ Legacy modules (`sa_detector`, `swara_mapper`, `matched_portion_finder`, `aligne
 1. Receive guru and disciple files.
 2. Decode audio.
 3. Validate duration and readability.
-4. Load full waveform with `librosa.load(..., mono=True, sr=22050)`.
+4. Load full waveform: WAV via `librosa.load`; MP3/M4A via bundled `imageio-ffmpeg` (`backend/app/core/ffmpeg.py`).
 5. Preserve full waveform. Do not trim silence.
 6. Extract F0 with `librosa.pyin` for each file.
 7. Preserve frame timeline and mark unvoiced frames.

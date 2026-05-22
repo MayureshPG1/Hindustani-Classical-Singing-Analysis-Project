@@ -83,7 +83,7 @@ def test_compare_no_vocals_detected(client: TestClient, tmp_path: Path) -> None:
 
 def test_compare_unsupported_file_type(client: TestClient, tmp_path: Path) -> None:
     guru = write_wav(tmp_path / "guru.wav", duration_seconds=0.3, frequency_hz=440.0)
-    bad = tmp_path / "disciple.m4a"
+    bad = tmp_path / "disciple.flac"
     bad.write_bytes(b"\x00")
 
     with guru.open("rb") as g, bad.open("rb") as d:
@@ -91,7 +91,7 @@ def test_compare_unsupported_file_type(client: TestClient, tmp_path: Path) -> No
             "/api/v1/compare",
             files={
                 "guru_file": ("guru.wav", g, "audio/wav"),
-                "disciple_file": ("disciple.m4a", d, "audio/mp4"),
+                "disciple_file": ("disciple.flac", d, "audio/flac"),
             },
         )
 

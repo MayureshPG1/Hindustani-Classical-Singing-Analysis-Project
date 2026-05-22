@@ -13,6 +13,7 @@ from backend.app.api.routes_audio import router as audio_router
 from backend.app.api.routes_compare import router as compare_router
 from backend.app.api.routes_health import router as health_router
 from backend.app.core.errors import HcsaError
+from backend.app.core.ffmpeg import configure_ffmpeg
 from backend.app.core.request_log import configure_logging, log_event, verbose_from_request
 from backend.app.core.session import SessionManager
 from backend.app.models.errors import ErrorResponse
@@ -23,7 +24,13 @@ from shared.constants import APP_VERSION
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging()
     app.state.session_manager = SessionManager()
-    log_event("app", "startup", version=APP_VERSION)
+    ffmpeg_path = configure_ffmpeg()
+    log_event(
+        "app",
+        "startup",
+        version=APP_VERSION,
+        ffmpeg_available=ffmpeg_path is not None,
+    )
     yield
     log_event("app", "shutdown")
     app.state.session_manager.clear()

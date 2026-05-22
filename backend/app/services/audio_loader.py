@@ -11,6 +11,7 @@ import numpy as np
 import soundfile as sf
 
 from backend.app.core import config
+from backend.app.core.ffmpeg import decode_mono_pcm, get_ffmpeg_executable, probe_audio
 from backend.app.core.errors import (
     HcsaError,
     raise_decode_failed,
@@ -23,6 +24,7 @@ from shared.constants import MAX_AUDIO_DURATION_SECONDS, SUPPORTED_AUDIO_EXTENSI
 
 # Peak below this after decode is treated as empty audio.
 _MIN_PEAK_AMPLITUDE = 1e-8
+_COMPRESSED_EXTENSIONS = frozenset({".mp3", ".m4a"})
 
 
 @dataclass
@@ -47,6 +49,30 @@ def make_file_id(role: str) -> str:
     return f"{role}-{uuid.uuid4().hex[:8]}"
 
 
+def _load_compressed(
+    path: Path,
+    *,
+    file_name: str,
+) -> tuple[np.ndarray, int, int | None, int]:
+    """Decode MP3/M4A via bundled or system FFmpeg (not librosa/audioread)."""
+    if get_ffmpeg_executable() is None:
+        raise_decode_failed(
+            file_name,
+            "FFmpeg is not available. Reinstall dependencies (imageio-ffmpeg).",
+        )
+
+    probe = probe_audio(path)
+    if probe.duration_seconds is not None and probe.duration_seconds > MAX_AUDIO_DURATION_SECONDS:
+        raise_file_too_long(probe.duration_seconds)
+
+    try:
+        waveform = decode_mono_pcm(path, sample_rate=config.SR)
+    except Exception as exc:
+        raise_decode_failed(file_name, str(exc))
+
+    return waveform, config.SR, probe.sample_rate, probe.channels or 1
+
+
 def load_and_validate(
     path: Path,
     *,
@@ -65,27 +91,31 @@ def load_and_validate(
     resolved_id = file_id or make_file_id(role)
     native_sr: int | None = None
     native_channels = 1
+    ext = normalize_extension(file_name)
 
-    try:
-        info = sf.info(path)
-        native_sr = info.samplerate
-        native_channels = info.channels
-        if info.duration > MAX_AUDIO_DURATION_SECONDS:
-            raise_file_too_long(float(info.duration))
-    except HcsaError:
-        raise
-    except Exception:
-        native_sr = None
+    if ext in _COMPRESSED_EXTENSIONS:
+        waveform, sr, native_sr, native_channels = _load_compressed(path, file_name=file_name)
+    else:
+        try:
+            info = sf.info(path)
+            native_sr = info.samplerate
+            native_channels = info.channels
+            if info.duration > MAX_AUDIO_DURATION_SECONDS:
+                raise_file_too_long(float(info.duration))
+        except HcsaError:
+            raise
+        except Exception:
+            native_sr = None
 
-    try:
-        waveform, sr = librosa.load(
-            path,
-            sr=config.SR,
-            mono=True,
-            duration=None,
-        )
-    except Exception as exc:
-        raise_decode_failed(file_name, str(exc))
+        try:
+            waveform, sr = librosa.load(
+                path,
+                sr=config.SR,
+                mono=True,
+                duration=None,
+            )
+        except Exception as exc:
+            raise_decode_failed(file_name, str(exc))
 
     duration_seconds = float(len(waveform) / sr) if sr else 0.0
     if duration_seconds > MAX_AUDIO_DURATION_SECONDS:
