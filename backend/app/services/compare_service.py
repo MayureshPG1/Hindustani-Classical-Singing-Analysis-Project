@@ -9,6 +9,7 @@ from backend.app.core.errors import (
     raise_invalid_tolerance,
     raise_no_vocals_detected,
 )
+from backend.app.core.session import RoleAnalysisCache
 from backend.app.core.request_log import log_event, log_step
 from backend.app.models.comparison import ComparisonResult
 from backend.app.models.pitch import PitchFrame, PitchSummary
@@ -43,6 +44,46 @@ def ensure_sufficient_vocals(frames: list[PitchFrame], *, role: str) -> None:
 def validate_tolerance_cents(tolerance_cents: int) -> None:
     if tolerance_cents < MIN_TOLERANCE_CENTS or tolerance_cents > MAX_TOLERANCE_CENTS:
         raise_invalid_tolerance(tolerance_cents)
+
+
+def compare_from_analysis_cache(
+    guru_cache: RoleAnalysisCache,
+    disciple_cache: RoleAnalysisCache,
+    *,
+    tolerance_cents: int = 0,
+) -> ComparisonResult:
+    """
+    Score wall-clock comparison using pitch timelines cached from inspect.
+
+    Does not reload audio or re-run pyin.
+    """
+    validate_tolerance_cents(tolerance_cents)
+
+    with log_step(ROUTE, "score_wall_clock from cache", tolerance_cents=tolerance_cents):
+        summary = score_wall_clock(
+            guru_cache.pitch_frames,
+            disciple_cache.pitch_frames,
+            tolerance_cents=tolerance_cents,
+            guru_duration_seconds=guru_cache.file_info.duration_seconds,
+            disciple_duration_seconds=disciple_cache.file_info.duration_seconds,
+        )
+
+    log_event(
+        ROUTE,
+        "comparison ready (cached pitch)",
+        overall_score=summary.overall_score,
+        match_pct=summary.match_percentage,
+        scored_overlap_s=min(
+            guru_cache.file_info.duration_seconds,
+            disciple_cache.file_info.duration_seconds,
+        ),
+    )
+
+    return ComparisonResult(
+        guru_file_info=guru_cache.file_info,
+        disciple_file_info=disciple_cache.file_info,
+        comparison_summary=summary,
+    )
 
 
 def compare_audio_files(

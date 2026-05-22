@@ -56,9 +56,17 @@ async def inspect_audio(
     log_event(ROUTE, "saved temp file", path=str(dest), bytes=len(content))
 
     with log_step(ROUTE, "inspect_audio_file", file_id=file_id):
-        result = inspect_audio_file(dest, role=role, file_name=file_name, file_id=file_id)
+        result, pitch_frames = inspect_audio_file(
+            dest, role=role, file_name=file_name, file_id=file_id
+        )
 
     session.set_role_file(role, result.file_info.file_id, dest)
+    session.set_role_analysis(
+        role,
+        file_info=result.file_info,
+        pitch_frames=pitch_frames,
+        source_path=dest,
+    )
     log_event(
         ROUTE,
         "success",

@@ -125,3 +125,6 @@ def test_inspect_registers_file_in_session(client: TestClient, tmp_path: Path) -
     assert file_id in session.file_refs
     assert session.role_file_ids["disciple"] == file_id
     assert Path(session.file_refs[file_id]).exists()
+    cache = session.get_role_analysis("disciple")
+    assert cache is not None
+    assert len(cache.pitch_frames) > 0

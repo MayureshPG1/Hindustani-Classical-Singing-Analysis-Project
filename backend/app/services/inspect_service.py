@@ -6,6 +6,7 @@ from pathlib import Path
 
 from backend.app.core.request_log import log_event, log_step
 from backend.app.models.audio import AudioInspectResponse, PitchMetadata
+from backend.app.models.pitch import PitchFrame
 from backend.app.services.audio_loader import load_and_validate
 from backend.app.services.compare_service import ensure_sufficient_vocals, summarize_pitch
 from backend.app.services.pitch_extractor import extract_pitch
@@ -19,11 +20,11 @@ def inspect_audio_file(
     role: str,
     file_name: str,
     file_id: str | None = None,
-) -> AudioInspectResponse:
+) -> tuple[AudioInspectResponse, list[PitchFrame]]:
     """
     Load audio, extract pitch for validation, return metadata and voiced stats.
 
-    Full ``PitchFrame`` timelines are returned only from ``POST /compare``.
+    Pitch frames are stored in the session at inspect and reused at compare.
     """
     with log_step(ROUTE, "load_and_validate", path=str(path), role=role):
         loaded = load_and_validate(path, role=role, file_name=file_name, file_id=file_id)
@@ -48,7 +49,7 @@ def inspect_audio_file(
         voiced_fraction=summary.voiced_fraction,
     )
 
-    return AudioInspectResponse(
+    response = AudioInspectResponse(
         file_info=loaded.file_info,
         pitch_metadata=PitchMetadata(
             voiced_frame_count=summary.voiced_frame_count,
@@ -56,3 +57,4 @@ def inspect_audio_file(
             voiced_fraction=summary.voiced_fraction,
         ),
     )
+    return response, frames

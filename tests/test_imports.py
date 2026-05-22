@@ -26,6 +26,7 @@ BACKEND_MODULES = [
 ]
 
 FRONTEND_MODULES = [
+    "frontend.app",
     "frontend.main_window",
     "frontend.api_client",
     "frontend.backend_manager",
@@ -84,3 +85,9 @@ def test_frontend_validation_rejects_bad_extension(tmp_path) -> None:
     bad = tmp_path / "track.flac"
     bad.write_bytes(b"\x00\x01")
     assert validate_upload_path(bad) is not None
+
+
+def test_frontend_app_main_is_callable() -> None:
+    from frontend import app
+
+    assert callable(app.main)

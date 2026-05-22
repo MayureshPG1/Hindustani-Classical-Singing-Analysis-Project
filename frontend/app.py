@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 def main() -> None:
-    """Launch the main window (implemented in Phase 7)."""
+    """Launch the PySide6 desktop shell."""
     from PySide6.QtWidgets import QApplication
 
     from frontend.main_window import MainWindow

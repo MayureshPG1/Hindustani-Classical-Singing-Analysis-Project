@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 
-from backend.app.core.errors import raise_decode_failed, raise_unsupported_file_type
+from backend.app.core.errors import raise_comparison_failed, raise_decode_failed, raise_unsupported_file_type
 from backend.app.core.request_log import log_event, log_step
 from backend.app.core.session import SessionManager
 from backend.app.models.comparison import ClearSessionResponse, ComparisonResult
@@ -13,7 +13,11 @@ from backend.app.services.audio_loader import (
     make_file_id,
     normalize_extension,
 )
-from backend.app.services.compare_service import compare_audio_files, validate_tolerance_cents
+from backend.app.services.compare_service import (
+    compare_audio_files,
+    compare_from_analysis_cache,
+    validate_tolerance_cents,
+)
 from shared.constants import DEFAULT_TOLERANCE_CENTS
 
 router = APIRouter(tags=["compare"])
@@ -34,19 +38,50 @@ def clear_session(request: Request, session: SessionManager = Depends(get_sessio
 @router.post("/compare", response_model=ComparisonResult)
 async def compare_recordings(
     request: Request,
-    guru_file: UploadFile = File(...),
-    disciple_file: UploadFile = File(...),
+    guru_file: UploadFile | None = File(None),
+    disciple_file: UploadFile | None = File(None),
     tolerance_cents: int = Form(DEFAULT_TOLERANCE_CENTS),
     session: SessionManager = Depends(get_session),
 ) -> ComparisonResult:
     validate_tolerance_cents(tolerance_cents)
-    log_event(
-        "POST /compare",
-        "called",
-        guru=guru_file.filename,
-        disciple=disciple_file.filename,
-        tolerance_cents=tolerance_cents,
-    )
+    log_event("POST /compare", "called", tolerance_cents=tolerance_cents)
+
+    if session.has_compare_ready_cache():
+        guru_cache = session.get_role_analysis("guru")
+        disciple_cache = session.get_role_analysis("disciple")
+        if guru_cache is None or disciple_cache is None:
+            raise_comparison_failed("Cached pitch data is incomplete.")
+        log_event(
+            "POST /compare",
+            "using cached pitch from inspect",
+            guru_file_id=guru_cache.file_info.file_id,
+            disciple_file_id=disciple_cache.file_info.file_id,
+        )
+        session.processing_status = "generating_graph"
+        try:
+            with log_step("POST /compare", "compare_from_analysis_cache"):
+                result = compare_from_analysis_cache(
+                    guru_cache,
+                    disciple_cache,
+                    tolerance_cents=tolerance_cents,
+                )
+        finally:
+            session.processing_status = "idle"
+        session.cached_comparison = result
+        summary = result.comparison_summary
+        log_event(
+            "POST /compare",
+            "success (cached)",
+            overall_score=summary.overall_score,
+            match_percentage=summary.match_percentage,
+            tolerance_cents=summary.tolerance_cents,
+        )
+        return result
+
+    if guru_file is None or disciple_file is None:
+        raise_comparison_failed(
+            "Inspect guru and disciple audio before comparing, or upload both files."
+        )
 
     guru_name = guru_file.filename or "guru"
     disciple_name = disciple_file.filename or "disciple"
@@ -73,7 +108,7 @@ async def compare_recordings(
     disciple_dest.write_bytes(disciple_bytes)
     log_event(
         "POST /compare",
-        "saved temp files",
+        "saved temp files (no inspect cache)",
         guru_bytes=len(guru_bytes),
         disciple_bytes=len(disciple_bytes),
     )
