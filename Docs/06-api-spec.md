@@ -20,7 +20,7 @@ Optional console logging for route steps and pitch extraction timing:
 - `?verbose=true` on any request, or
 - Header `X-HCSA-Verbose: 1`
 
-When enabled, logs include request/response lines, per-step `start`/`done` with `elapsed_s`, and pyin configuration. Structured API errors are logged at WARNING even when verbose is off.
+When enabled, logs include request/response lines, per-step `start`/`done` with `elapsed_s`, pyin configuration, and **`pyin progress` lines with `percent`** (long audio is processed in `PYIN_CHUNK_SECONDS` slices). Structured API errors are logged at WARNING even when verbose is off.
 
 ## API Principles
 

@@ -8,13 +8,15 @@ from shared.constants import (
     MAX_AUDIO_DURATION_SECONDS,
 )
 
-# librosa.pyin (tuned for speed: fewer frames than 220-hop / ~10 ms)
+# librosa.pyin
 SR = 22050
-HOP_LENGTH = 512  # ~23 ms per frame at 22050 Hz (was 220 ~10 ms)
+HOP_LENGTH = 220
 FRAME_LENGTH = 2048
-PYIN_N_THRESHOLDS = 50  # librosa default 100; lower is faster
 FMIN_HZ = 50.0
 FMAX_HZ = 1000.0
+
+# Seconds of audio per pyin chunk when logging progress (verbose mode)
+PYIN_CHUNK_SECONDS = 15.0
 
 # Voiced / plot / compare
 VOICED_PROB_PLOT_MIN = 0.55
@@ -27,7 +29,7 @@ SA_MIN_VOICED_DURATION_SEC = 0.5
 SA_HISTOGRAM_MIN_PEAK_WEIGHT = 0.15
 
 # no_vocals_detected
-MIN_VOICED_FRAMES_TOTAL = 20  # with HOP_LENGTH 512, short clips yield fewer frames than 220-hop
+MIN_VOICED_FRAMES_TOTAL = 30
 MIN_VOICED_FRACTION = 0.05
 
 # POST /audio/inspect pitch preview in response

@@ -79,7 +79,7 @@ def test_inspect_no_audio_detected(client: TestClient, tmp_path: Path) -> None:
 
 
 def test_inspect_no_vocals_detected(client: TestClient, tmp_path: Path) -> None:
-    wav = write_wav(tmp_path / "low.wav", duration_seconds=0.4, frequency_hz=30.0)
+    wav = write_wav(tmp_path / "low.wav", duration_seconds=2.0, frequency_hz=30.0)
     response = _inspect(client, wav)
     assert response.status_code == 400
     assert response.json()["error_code"] == "no_vocals_detected"

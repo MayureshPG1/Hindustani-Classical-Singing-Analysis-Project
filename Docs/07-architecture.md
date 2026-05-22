@@ -129,12 +129,12 @@ Legacy modules (`sa_detector`, `swara_mapper`, `matched_portion_finder`, `aligne
 | Constant | Value | Use |
 | --- | --- | --- |
 | `SR` | 22050 | Analysis sample rate |
-| `HOP_LENGTH` | 512 | ~23 ms frames (faster pyin than 220-hop) |
-| `PYIN_N_THRESHOLDS` | 50 | Lower than librosa default 100 for speed |
+| `HOP_LENGTH` | 220 | ~10 ms frames |
+| `PYIN_CHUNK_SECONDS` | 15 | Chunk size for verbose `pyin progress` percent logs |
 | `FMIN_HZ` / `FMAX_HZ` | 50 / 1000 | `librosa.pyin` range |
 | `VOICED_PROB_PLOT_MIN` | 0.55 | Reliable pitch for plotting |
 | `VOICED_PROB_SILENT_MAX` | 0.35 | Treat as silent/unvoiced |
-| `MIN_VOICED_FRAMES_TOTAL` | 20 | Below → `no_vocals_detected` (tuned for 512-hop) |
+| `MIN_VOICED_FRAMES_TOTAL` | 30 | Below → `no_vocals_detected` |
 | `MIN_VOICED_FRACTION` | 0.05 | Below → `no_vocals_detected` |
 | `INSPECT_PITCH_PREVIEW_FRAMES` | 5 | Frames in inspect `preview_frames` |
 
