@@ -10,7 +10,7 @@ from shared.constants import (
 
 # librosa.pyin
 SR = 22050
-HOP_LENGTH = 220
+HOP_LENGTH = 512
 FRAME_LENGTH = 2048
 FMIN_HZ = 50.0
 FMAX_HZ = 1000.0

@@ -129,7 +129,7 @@ Legacy modules (`sa_detector`, `swara_mapper`, `matched_portion_finder`, `aligne
 | Constant | Value | Use |
 | --- | --- | --- |
 | `SR` | 22050 | Analysis sample rate |
-| `HOP_LENGTH` | 220 | ~10 ms frames |
+| `HOP_LENGTH` | 512 | ~23 ms frames |
 | `PYIN_CHUNK_SECONDS` | 15 | Chunk size for verbose `pyin progress` percent logs |
 | `FMIN_HZ` / `FMAX_HZ` | 50 / 1000 | `librosa.pyin` range |
 | `VOICED_PROB_PLOT_MIN` | 0.55 | Reliable pitch for plotting |

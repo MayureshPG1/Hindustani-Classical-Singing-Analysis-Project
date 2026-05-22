@@ -61,7 +61,7 @@ def test_backend_config_matches_architecture() -> None:
     from backend.app.core import config
 
     assert config.SR == 22050
-    assert config.HOP_LENGTH == 220
+    assert config.HOP_LENGTH == 512
     assert config.VOICED_PROB_PLOT_MIN == 0.55
     assert config.MIN_VOICED_FRAMES_TOTAL == 30
 
