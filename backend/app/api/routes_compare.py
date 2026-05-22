@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 
 from backend.app.core.errors import raise_decode_failed, raise_unsupported_file_type
+from backend.app.core.request_log import log_event, log_step
 from backend.app.core.session import SessionManager
 from backend.app.models.comparison import ClearSessionResponse, ComparisonResult
 from backend.app.services.audio_loader import (
@@ -24,17 +23,27 @@ def get_session(request: Request) -> SessionManager:
 
 
 @router.post("/session/clear", response_model=ClearSessionResponse)
-def clear_session(session: SessionManager = Depends(get_session)) -> ClearSessionResponse:
+def clear_session(request: Request, session: SessionManager = Depends(get_session)) -> ClearSessionResponse:
+    log_event("POST /session/clear", "called", session_id=session.session_id)
     session.clear()
+    log_event("POST /session/clear", "cleared")
     return ClearSessionResponse()
 
 
 @router.post("/compare", response_model=ComparisonResult)
 async def compare_recordings(
+    request: Request,
     guru_file: UploadFile = File(...),
     disciple_file: UploadFile = File(...),
     session: SessionManager = Depends(get_session),
 ) -> ComparisonResult:
+    log_event(
+        "POST /compare",
+        "called",
+        guru=guru_file.filename,
+        disciple=disciple_file.filename,
+    )
+
     guru_name = guru_file.filename or "guru"
     disciple_name = disciple_file.filename or "disciple"
 
@@ -47,8 +56,10 @@ async def compare_recordings(
     guru_dest = session.temp_root / f"{guru_id}{normalize_extension(guru_name)}"
     disciple_dest = session.temp_root / f"{disciple_id}{normalize_extension(disciple_name)}"
 
-    guru_bytes = await guru_file.read()
-    disciple_bytes = await disciple_file.read()
+    with log_step("POST /compare", "read uploads"):
+        guru_bytes = await guru_file.read()
+        disciple_bytes = await disciple_file.read()
+
     if not guru_bytes:
         raise_decode_failed(guru_name, "empty upload")
     if not disciple_bytes:
@@ -56,21 +67,37 @@ async def compare_recordings(
 
     guru_dest.write_bytes(guru_bytes)
     disciple_dest.write_bytes(disciple_bytes)
+    log_event(
+        "POST /compare",
+        "saved temp files",
+        guru_bytes=len(guru_bytes),
+        disciple_bytes=len(disciple_bytes),
+    )
 
     session.processing_status = "loading_audio"
     try:
-        result = compare_audio_files(
-            guru_dest,
-            guru_file_name=guru_name,
-            guru_file_id=guru_id,
-            disciple_path=disciple_dest,
-            disciple_file_name=disciple_name,
-            disciple_file_id=disciple_id,
-        )
+        with log_step("POST /compare", "compare_audio_files"):
+            result = compare_audio_files(
+                guru_dest,
+                guru_file_name=guru_name,
+                guru_file_id=guru_id,
+                disciple_path=disciple_dest,
+                disciple_file_name=disciple_name,
+                disciple_file_id=disciple_id,
+            )
     finally:
         session.processing_status = "idle"
 
     session.set_role_file("guru", result.guru_file_info.file_id, guru_dest)
     session.set_role_file("disciple", result.disciple_file_info.file_id, disciple_dest)
     session.cached_comparison = result
+
+    log_event(
+        "POST /compare",
+        "success",
+        guru_frames=len(result.guru_pitch_frames),
+        disciple_frames=len(result.disciple_pitch_frames),
+        guru_voiced=result.guru_summary.voiced_fraction if result.guru_summary else None,
+        disciple_voiced=result.disciple_summary.voiced_fraction if result.disciple_summary else None,
+    )
     return result

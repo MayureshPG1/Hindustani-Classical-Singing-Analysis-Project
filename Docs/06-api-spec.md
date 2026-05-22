@@ -12,6 +12,16 @@ http://127.0.0.1:8765/api/v1
 
 MVP uses a static local port **8765**. The desktop app and backend subprocess must use this port consistently.
 
+## Verbose logging
+
+Optional console logging for route steps and pitch extraction timing:
+
+- `HCSA_VERBOSE=1` in the environment, or
+- `?verbose=true` on any request, or
+- Header `X-HCSA-Verbose: 1`
+
+When enabled, logs include request/response lines, per-step `start`/`done` with `elapsed_s`, and pyin configuration. Structured API errors are logged at WARNING even when verbose is off.
+
 ## API Principles
 
 - Local-only.

@@ -22,8 +22,8 @@ def client() -> TestClient:
 
 
 def test_compare_returns_pitch_arrays(client: TestClient, tmp_path: Path) -> None:
-    guru = write_wav(tmp_path / "guru.wav", duration_seconds=0.6, frequency_hz=440.0)
-    disciple = write_wav(tmp_path / "disciple.wav", duration_seconds=0.5, frequency_hz=466.0)
+    guru = write_wav(tmp_path / "guru.wav", duration_seconds=1.5, frequency_hz=440.0)
+    disciple = write_wav(tmp_path / "disciple.wav", duration_seconds=1.5, frequency_hz=466.0)
 
     with guru.open("rb") as g, disciple.open("rb") as d:
         response = client.post(
@@ -62,9 +62,9 @@ def test_compare_returns_pitch_arrays(client: TestClient, tmp_path: Path) -> Non
 
 
 def test_compare_no_vocals_detected(client: TestClient, tmp_path: Path) -> None:
-    guru = write_wav(tmp_path / "guru.wav", duration_seconds=0.4, frequency_hz=440.0)
+    guru = write_wav(tmp_path / "guru.wav", duration_seconds=1.5, frequency_hz=440.0)
     # Below pyin fmin (50 Hz): loads as audio but yields almost no voiced pitch frames.
-    silent = write_wav(tmp_path / "disciple.wav", duration_seconds=0.4, frequency_hz=30.0)
+    silent = write_wav(tmp_path / "disciple.wav", duration_seconds=1.5, frequency_hz=30.0)
 
     with guru.open("rb") as g, silent.open("rb") as d:
         response = client.post(
@@ -100,8 +100,8 @@ def test_compare_unsupported_file_type(client: TestClient, tmp_path: Path) -> No
 
 
 def test_compare_service_sine_contours(tmp_path: Path) -> None:
-    guru = write_wav(tmp_path / "g.wav", duration_seconds=0.5, frequency_hz=220.0)
-    disciple = write_wav(tmp_path / "d.wav", duration_seconds=0.5, frequency_hz=330.0)
+    guru = write_wav(tmp_path / "g.wav", duration_seconds=1.5, frequency_hz=220.0)
+    disciple = write_wav(tmp_path / "d.wav", duration_seconds=1.5, frequency_hz=330.0)
 
     result = compare_audio_files(
         guru,

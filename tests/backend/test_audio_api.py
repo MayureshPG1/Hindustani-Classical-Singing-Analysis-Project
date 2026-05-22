@@ -94,7 +94,7 @@ def test_inspect_decode_failed(client: TestClient, tmp_path: Path) -> None:
 
 
 def test_inspect_registers_file_in_session(client: TestClient, tmp_path: Path) -> None:
-    wav = write_wav(tmp_path / "disciple.wav", duration_seconds=0.4)
+    wav = write_wav(tmp_path / "disciple.wav", duration_seconds=1.2)
     response = _inspect(client, wav, role="disciple")
     assert response.status_code == 200
     file_id = response.json()["file_info"]["file_id"]

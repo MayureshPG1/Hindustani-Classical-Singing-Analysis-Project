@@ -6,6 +6,7 @@ import numpy as np
 import librosa
 
 from backend.app.core import config
+from backend.app.core.request_log import log_event, log_step, should_log
 from backend.app.models.pitch import PitchFrame
 
 
@@ -36,6 +37,7 @@ def extract_pitch(
     waveform: np.ndarray,
     *,
     sample_rate: int | None = None,
+    route: str = "pitch",
 ) -> list[PitchFrame]:
     """
     Extract F0 with librosa.pyin over the full waveform timeline.
@@ -44,21 +46,42 @@ def extract_pitch(
     """
     sr = sample_rate or config.SR
     if waveform.size == 0:
+        log_event(route, "extract_pitch skipped empty waveform")
         return []
 
-    f0, voiced_flag, voiced_probs = librosa.pyin(
-        waveform,
-        fmin=config.FMIN_HZ,
-        fmax=config.FMAX_HZ,
-        sr=sr,
-        frame_length=config.FRAME_LENGTH,
-        hop_length=config.HOP_LENGTH,
-    )
+    hop = config.HOP_LENGTH
+    if should_log():
+        log_event(
+            route,
+            "pyin config",
+            samples=len(waveform),
+            sr=sr,
+            hop_length=hop,
+            frame_length=config.FRAME_LENGTH,
+            n_thresholds=config.PYIN_N_THRESHOLDS,
+            approx_frame_ms=round(1000 * hop / sr, 2),
+        )
+
+    with log_step(
+        route,
+        "librosa.pyin",
+        samples=len(waveform),
+        hop_length=hop,
+    ):
+        f0, voiced_flag, voiced_probs = librosa.pyin(
+            waveform,
+            fmin=config.FMIN_HZ,
+            fmax=config.FMAX_HZ,
+            sr=sr,
+            frame_length=config.FRAME_LENGTH,
+            hop_length=hop,
+            n_thresholds=config.PYIN_N_THRESHOLDS,
+        )
 
     times = librosa.frames_to_time(
         np.arange(len(f0)),
         sr=sr,
-        hop_length=config.HOP_LENGTH,
+        hop_length=hop,
     )
 
     frames: list[PitchFrame] = []
@@ -84,6 +107,15 @@ def extract_pitch(
                 voiced=voiced,
                 silent_or_unvoiced=silent_or_unvoiced,
             )
+        )
+
+    if should_log():
+        voiced_n = sum(1 for frame in frames if frame.voiced)
+        log_event(
+            route,
+            "extract_pitch complete",
+            frame_count=len(frames),
+            voiced_frames=voiced_n,
         )
 
     return frames
