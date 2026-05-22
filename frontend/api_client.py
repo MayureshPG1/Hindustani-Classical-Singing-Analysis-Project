@@ -84,6 +84,10 @@ class HcsaApiClient:
             data={"tolerance_cents": str(tolerance_cents)},
         )
 
+    def get_comparison_pitch(self) -> dict[str, Any]:
+        """Fetch cached guru and disciple pitch timelines for graph rendering."""
+        return self._get_json("/compare/pitch")
+
     def clear_session(self) -> dict[str, Any]:
         return self._post_json("/session/clear")
 

@@ -52,8 +52,8 @@ class FakeApiClient:
         **kwargs: Any,
     ) -> dict[str, Any]:
         return {
-            "guru_file_info": {"file_name": guru_path.name},
-            "disciple_file_info": {"file_name": disciple_path.name},
+            "guru_file_info": {"file_name": "guru.wav"},
+            "disciple_file_info": {"file_name": "disciple.wav"},
             "comparison_summary": {
                 "overall_score": 90.0,
                 "average_deviation_cents": 2.0,
@@ -62,6 +62,19 @@ class FakeApiClient:
                 "lower_percentage": 5.0,
                 "tolerance_cents": 0,
             },
+        }
+
+    def get_comparison_pitch(self) -> dict[str, Any]:
+        return {
+            "guru_pitch_frames": [
+                {"time_seconds": 0.0, "frequency_hz": 220.0, "voiced": True, "silent_or_unvoiced": False},
+                {"time_seconds": 0.1, "frequency_hz": None, "voiced": False, "silent_or_unvoiced": True},
+                {"time_seconds": 0.2, "frequency_hz": 230.0, "voiced": True, "silent_or_unvoiced": False},
+            ],
+            "disciple_pitch_frames": [
+                {"time_seconds": 0.0, "frequency_hz": 225.0, "voiced": True, "silent_or_unvoiced": False},
+                {"time_seconds": 0.2, "frequency_hz": 235.0, "voiced": True, "silent_or_unvoiced": False},
+            ],
         }
 
     def clear_session(self) -> dict[str, Any]:
@@ -136,18 +149,51 @@ def test_compare_populates_summary_panel(qtbot) -> None:
     window = _open_window(qtbot)
     window._on_compare_ready(
         {
-            "comparison_summary": {
-                "overall_score": 90.0,
-                "average_deviation_cents": 2.0,
-                "match_percentage": 90.0,
-                "higher_percentage": 5.0,
-                "lower_percentage": 5.0,
-                "tolerance_cents": 0,
-            }
+            "compare": {
+                "comparison_summary": {
+                    "overall_score": 90.0,
+                    "average_deviation_cents": 2.0,
+                    "match_percentage": 90.0,
+                    "higher_percentage": 5.0,
+                    "lower_percentage": 5.0,
+                    "tolerance_cents": 0,
+                }
+            },
+            "pitch": {
+                "guru_pitch_frames": [
+                    {"time_seconds": 0.0, "frequency_hz": 220.0},
+                ],
+                "disciple_pitch_frames": [
+                    {"time_seconds": 0.0, "frequency_hz": 225.0},
+                ],
+            },
         }
     )
     assert window.summary_panel._value_labels["overall_score"].text() == "90.0%"
     assert window.summary_panel._stack.currentIndex() == 1
+    assert window.graph._stack.currentWidget() is window.graph._plot_widget
+
+
+def test_compare_plots_graph_contours(qtbot) -> None:
+    window = _open_window(qtbot)
+    window._on_compare_ready(
+        {
+            "compare": {
+                "comparison_summary": {
+                    "overall_score": 90.0,
+                    "average_deviation_cents": 2.0,
+                    "match_percentage": 90.0,
+                    "higher_percentage": 5.0,
+                    "lower_percentage": 5.0,
+                    "tolerance_cents": 0,
+                }
+            },
+            "pitch": FakeApiClient().get_comparison_pitch(),
+        }
+    )
+    guru_x, guru_y = window.graph._guru_curve.getData()
+    assert guru_x is not None and len(guru_x) == 3
+    assert guru_y is not None and len(guru_y) == 3
 
 
 def test_error_popup_then_ui_reset(qtbot, monkeypatch) -> None:

@@ -179,6 +179,57 @@ Additional error codes for compare:
 - `invalid_tolerance` — `tolerance_cents` outside 0–25.
 - `comparison_failed` — no overlapping voiced frame pairs to score.
 
+## Endpoint: Compare Pitch (Graph)
+
+```txt
+GET /compare/pitch
+```
+
+Purpose:
+
+Return full-timeline `PitchFrame` arrays for guru and disciple after pitch has been cached in the session. Used by the desktop graph UI; not a substitute for `POST /compare` scoring.
+
+When pitch is available:
+
+- After `POST /audio/inspect` for both `guru` and `disciple` (pitch stored in session), or
+- After `POST /compare` with multipart uploads (pitch extracted during compare and stored in session).
+
+Success response:
+
+```json
+{
+  "guru_pitch_frames": [
+    {
+      "time_seconds": 0.0,
+      "frequency_hz": 245.2,
+      "confidence": 0.91,
+      "voiced": true,
+      "silent_or_unvoiced": false
+    }
+  ],
+  "disciple_pitch_frames": [
+    {
+      "time_seconds": 0.0,
+      "frequency_hz": 248.1,
+      "confidence": 0.88,
+      "voiced": true,
+      "silent_or_unvoiced": false
+    }
+  ]
+}
+```
+
+Behavior:
+
+- Returns the **full** extracted timeline per recording (same frames used for inspect validation and compare scoring).
+- Unvoiced or low-confidence frames may have `frequency_hz: null`; the frontend plots gaps for those frames.
+- Does not run pyin again if session cache is already populated.
+- `POST /compare` response remains summary-only; clients that need contours call this endpoint after a successful compare (or after both inspects).
+
+Error response:
+
+- `comparison_failed` — neither role has cached pitch (e.g. no inspect and no compare yet, or session cleared).
+
 ## Endpoint: Clear Session
 
 ```txt

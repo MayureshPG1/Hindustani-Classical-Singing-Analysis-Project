@@ -132,7 +132,7 @@ def test_compare_service_same_pitch_high_match(tmp_path: Path) -> None:
     guru = write_wav(tmp_path / "g.wav", duration_seconds=1.5, frequency_hz=220.0)
     disciple = write_wav(tmp_path / "d.wav", duration_seconds=1.5, frequency_hz=220.0)
 
-    result = compare_audio_files(
+    result, guru_frames, disciple_frames = compare_audio_files(
         guru,
         guru_file_name="g.wav",
         disciple_path=disciple,
@@ -140,6 +140,8 @@ def test_compare_service_same_pitch_high_match(tmp_path: Path) -> None:
         tolerance_cents=10,
     )
 
+    assert len(guru_frames) > 0
+    assert len(disciple_frames) > 0
     assert result.comparison_summary.match_percentage >= 50.0
     assert result.comparison_summary.tolerance_cents == 10
 

@@ -7,7 +7,11 @@ from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from backend.app.core.errors import raise_comparison_failed, raise_decode_failed, raise_unsupported_file_type
 from backend.app.core.request_log import log_event, log_step
 from backend.app.core.session import SessionManager
-from backend.app.models.comparison import ClearSessionResponse, ComparisonResult
+from backend.app.models.comparison import (
+    ClearSessionResponse,
+    ComparisonPitchResponse,
+    ComparisonResult,
+)
 from backend.app.services.audio_loader import (
     is_supported_file_name,
     make_file_id,
@@ -25,6 +29,30 @@ router = APIRouter(tags=["compare"])
 
 def get_session(request: Request) -> SessionManager:
     return request.app.state.session_manager
+
+
+@router.get("/compare/pitch", response_model=ComparisonPitchResponse)
+def get_comparison_pitch(session: SessionManager = Depends(get_session)) -> ComparisonPitchResponse:
+    """Return cached guru and disciple pitch timelines for the graph UI."""
+    log_event("GET /compare/pitch", "called")
+    if not session.has_compare_ready_cache():
+        raise_comparison_failed(
+            "Pitch data is not available. Inspect guru and disciple audio first."
+        )
+    guru_cache = session.get_role_analysis("guru")
+    disciple_cache = session.get_role_analysis("disciple")
+    if guru_cache is None or disciple_cache is None:
+        raise_comparison_failed("Cached pitch data is incomplete.")
+    log_event(
+        "GET /compare/pitch",
+        "success",
+        guru_frames=len(guru_cache.pitch_frames),
+        disciple_frames=len(disciple_cache.pitch_frames),
+    )
+    return ComparisonPitchResponse(
+        guru_pitch_frames=guru_cache.pitch_frames,
+        disciple_pitch_frames=disciple_cache.pitch_frames,
+    )
 
 
 @router.post("/session/clear", response_model=ClearSessionResponse)
@@ -116,7 +144,7 @@ async def compare_recordings(
     session.processing_status = "loading_audio"
     try:
         with log_step("POST /compare", "compare_audio_files"):
-            result = compare_audio_files(
+            result, guru_frames, disciple_frames = compare_audio_files(
                 guru_dest,
                 guru_file_name=guru_name,
                 guru_file_id=guru_id,
@@ -130,6 +158,18 @@ async def compare_recordings(
 
     session.set_role_file("guru", result.guru_file_info.file_id, guru_dest)
     session.set_role_file("disciple", result.disciple_file_info.file_id, disciple_dest)
+    session.set_role_analysis(
+        "guru",
+        file_info=result.guru_file_info,
+        pitch_frames=guru_frames,
+        source_path=guru_dest,
+    )
+    session.set_role_analysis(
+        "disciple",
+        file_info=result.disciple_file_info,
+        pitch_frames=disciple_frames,
+        source_path=disciple_dest,
+    )
     session.cached_comparison = result
 
     summary = result.comparison_summary

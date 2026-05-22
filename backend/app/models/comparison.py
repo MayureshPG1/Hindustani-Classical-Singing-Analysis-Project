@@ -7,6 +7,7 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 from backend.app.models.audio import AudioFileInfo
+from backend.app.models.pitch import PitchFrame
 
 
 class ProcessingStatus(str, Enum):
@@ -50,3 +51,10 @@ class ComparisonResult(BaseModel):
     guru_file_info: AudioFileInfo
     disciple_file_info: AudioFileInfo
     comparison_summary: ComparisonSummary
+
+
+class ComparisonPitchResponse(BaseModel):
+    """Full-timeline pitch frames for graph UI (from session cache)."""
+
+    guru_pitch_frames: list[PitchFrame]
+    disciple_pitch_frames: list[PitchFrame]

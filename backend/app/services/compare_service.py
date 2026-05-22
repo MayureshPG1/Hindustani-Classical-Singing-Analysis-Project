@@ -95,11 +95,12 @@ def compare_audio_files(
     disciple_file_name: str,
     disciple_file_id: str | None = None,
     tolerance_cents: int = 0,
-) -> ComparisonResult:
+) -> tuple[ComparisonResult, list[PitchFrame], list[PitchFrame]]:
     """
     Load guru and disciple audio, extract pitch, score by wall-clock Hz pairs.
 
-    No Sa detection or DTW. Pitch timelines are not returned in the API result.
+    Returns comparison result plus pitch timelines for session cache / graph API.
+    Pitch timelines are not included in the compare JSON response.
     """
     validate_tolerance_cents(tolerance_cents)
 
@@ -162,8 +163,12 @@ def compare_audio_files(
         ),
     )
 
-    return ComparisonResult(
-        guru_file_info=guru_loaded.file_info,
-        disciple_file_info=disciple_loaded.file_info,
-        comparison_summary=summary,
+    return (
+        ComparisonResult(
+            guru_file_info=guru_loaded.file_info,
+            disciple_file_info=disciple_loaded.file_info,
+            comparison_summary=summary,
+        ),
+        guru_frames,
+        disciple_frames,
     )

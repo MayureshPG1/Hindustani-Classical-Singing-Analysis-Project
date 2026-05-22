@@ -252,26 +252,55 @@ class MainWindow(QMainWindow):
         self.status_bar.set_status("Comparing recordings...")
         self.graph.show_empty_state()
         self.summary_panel.show_empty()
-        self._run_api_task(
-            lambda: self._client.compare_audio(),
-            self._on_compare_ready,
-        )
+        self._run_api_task(self._run_compare_and_fetch_pitch, self._on_compare_ready)
+
+    def _run_compare_and_fetch_pitch(self) -> dict[str, object]:
+        compare_result = self._client.compare_audio()
+        pitch_payload = self._client.get_comparison_pitch()
+        return {"compare": compare_result, "pitch": pitch_payload}
 
     def _on_compare_ready(self, payload: object) -> None:
-        if not isinstance(payload, dict) or "comparison_summary" not in payload:
+        if not isinstance(payload, dict):
             self._show_error_popup(
                 ApiError("comparison_failed", "Invalid compare response.", {})
             )
             self._clear_session_and_reset()
             return
 
-        summary = payload.get("comparison_summary")
+        compare_payload = payload.get("compare")
+        if not isinstance(compare_payload, dict) or "comparison_summary" not in compare_payload:
+            self._show_error_popup(
+                ApiError("comparison_failed", "Invalid compare response.", {})
+            )
+            self._clear_session_and_reset()
+            return
+
+        summary = compare_payload.get("comparison_summary")
         if isinstance(summary, dict):
             self.summary_panel.show_summary(summary)
         else:
             self.summary_panel.show_empty()
+
+        pitch_payload = payload.get("pitch")
+        if not isinstance(pitch_payload, dict):
+            self._show_error_popup(
+                ApiError("comparison_failed", "Invalid pitch response.", {})
+            )
+            self._clear_session_and_reset()
+            return
+
+        guru_frames = pitch_payload.get("guru_pitch_frames")
+        disciple_frames = pitch_payload.get("disciple_pitch_frames")
+        if not isinstance(guru_frames, list) or not isinstance(disciple_frames, list):
+            self._show_error_popup(
+                ApiError("comparison_failed", "Invalid pitch response.", {})
+            )
+            self._clear_session_and_reset()
+            return
+
+        self.status_bar.set_status("Generating graph...")
+        self.graph.plot_contours(guru_frames, disciple_frames)
         self.status_bar.set_status("Comparison complete.")
-        self.graph.show_empty_state()
 
     def _on_clear(self) -> None:
         if self._busy:
